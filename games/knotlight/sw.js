@@ -1,6 +1,6 @@
 /* Knotlight — offline cache. Bump VERSION on ship.
    Network-first for the page, code and data (always fresh when online, cached copy offline); cache-first for images. */
-const VERSION = 'knotlight-v1';
+const VERSION = 'knotlight-v2';
 const SHELL = [
   './',
   './index.html',
@@ -41,10 +41,7 @@ self.addEventListener('fetch', e => {
   };
   if (isFreshFirst(req, url)) {
     e.respondWith(fetch(req, { cache: 'no-cache' }).then(save).catch(() =>
-      caches.match(key).then(hit => hit || (req.mode === 'navigate' ? caches.match(new URL('./index.html',
-  './game.js',
-  './logic.js',
-  './levels.js', self.location).href) : Response.error()))));
+      caches.match(key).then(hit => hit || (req.mode === 'navigate' ? caches.match(new URL('./index.html', self.location).href) : Response.error()))));
     return;
   }
   e.respondWith(caches.match(key).then(hit => hit || fetch(req).then(save)));

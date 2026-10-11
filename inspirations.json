@@ -79,22 +79,6 @@
         "https://rotate-rings.com/guides/closed-rings/",
         "https://rotaterings.app/tips/"
       ]
-    },
-    {
-      "date": "2026-10-11",
-      "sourceTitle": "CubeAway - 3DPuzzle",
-      "sourceChart": "US App Store Top Free Games #4 (observed 2026-10-11)",
-      "sourceDeveloper": "GOODROID",
-      "why": "Highest uncovered chart game today (#4). Its 3D directional peel loop — tap a cube to fly along its arrow only when the ray ahead is empty, drag to rotate the camera — is a new spatial genre for Night Arcade versus existing catalog titles.",
-      "newSlug": "shadeaway",
-      "newTitle": "Shadeaway",
-      "notes": "Core loop kept close to the source: 3D lattice of cubes each with an axis-aligned arrow; tap launches along the arrow iff the entire ray ahead is empty of other cubes; otherwise the tap fails (costs a life); drag rotates the 3D camera; clear all cubes to win; Hint / Undo / Restart. Early levels small and friendly. Optional frost (thaw after N clears) on later boards only, under our fiction. Unlike typical soft locks, every board is proven clearable without boosters (tools/solve.js), and lives soft-fail with Retry/Hint/Undo — never paywalled. Own name, fiction (midnight shade-cubes, star-motes), procedural canvas 3D art, WebAudio synth audio and copy. No CubeAway, Arrow Cube Escape, GOODROID names, assets, characters or trademarked terms are used.",
-      "researchSources": [
-        "https://apps.apple.com/us/app/cubeaway-3dpuzzle/id6760325543",
-        "https://www.aayyy.com/cubeaway/ultimate-strategy-guide-mastering-3d-directional-puzzles/",
-        "https://www.aayyy.com/cubeaway/levels-walkthrough-how-to-clear-early-puzzles/",
-        "US App Store Top Free Games chart observation 2026-10-11"
-      ]
     }
   ]
 }

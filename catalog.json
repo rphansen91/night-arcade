@@ -86,23 +86,6 @@
       "path": "games/knotlight/",
       "cover": "games/knotlight/screenshots/cover.png",
       "accent": "#ff8fb1"
-    },
-    {
-      "id": "shadeaway",
-      "title": "Shadeaway",
-      "blurb": "Peel glowing shade-cubes from a midnight lattice. Tap only when the path is clear, or the lattice remembers.",
-      "description": "A mobile-first 3D directional peel puzzle under a midnight sky. Shade-cubes sit in a glowing lattice, each marked with an axis-aligned arrow. Tap a cube to send it drifting into the dark — but only when every cell along its ray is empty. Drag to rotate the lattice and uncover paths on the back and sides. A blocked tap costs a life; when lives run out you get Retry, Hint, and Undo with no paywall. Twenty-four handcrafted lattices ramp from a single friendly cube to dense multi-layer shells, with frosted cubes on later boards that thaw after other peels. Every lattice is proven clearable without boosters.",
-      "how": "Drag to rotate the lattice. Tap a shade-cube to launch it along its arrow when the path ahead is clear. Blocked taps cost a life. Frosted cubes thaw after other cubes drift away. Hint lights a safe peel. Undo is unlimited. Clear every cube to win.",
-      "tags": [
-        "puzzle",
-        "casual",
-        "spatial",
-        "3d"
-      ],
-      "status": "playable",
-      "path": "games/shadeaway/",
-      "cover": "games/shadeaway/screenshots/cover.png",
-      "accent": "#a8c4ff"
     }
   ]
 }
