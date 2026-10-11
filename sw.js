@@ -1,7 +1,7 @@
 /* Night Arcade — service worker.
    Caches the shell + catalog + listed game shells so the library works offline.
    Bump VERSION when shipping shell or catalog changes. */
-const VERSION = 'night-arcade-v11';
+const VERSION = 'night-arcade-v12';
 const SHELL = [
   './',
   './index.html',
@@ -62,6 +62,18 @@ const SHELL = [
   './games/knotlight/icons/apple-touch-icon.png',
   './games/knotlight/icons/favicon-32.png',
   './games/knotlight/screenshots/cover.png',
+  './games/shadeaway/',
+  './games/shadeaway/index.html',
+  './games/shadeaway/game.js',
+  './games/shadeaway/logic.js',
+  './games/shadeaway/levels.js',
+  './games/shadeaway/manifest.webmanifest',
+  './games/shadeaway/icons/icon-192.png',
+  './games/shadeaway/icons/icon-512.png',
+  './games/shadeaway/icons/icon-maskable-512.png',
+  './games/shadeaway/icons/apple-touch-icon.png',
+  './games/shadeaway/icons/favicon-32.png',
+  './games/shadeaway/screenshots/cover.png',
   './icons/og-image.png'
 ];
 
