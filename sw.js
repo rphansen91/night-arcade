@@ -1,7 +1,7 @@
 /* Night Arcade — service worker.
    Caches the shell + catalog + listed game shells so the library works offline.
    Bump VERSION when shipping shell or catalog changes. */
-const VERSION = 'night-arcade-v13';
+const VERSION = 'night-arcade-v14';
 const SHELL = [
   './',
   './index.html',
@@ -62,6 +62,17 @@ const SHELL = [
   './games/knotlight/icons/apple-touch-icon.png',
   './games/knotlight/icons/favicon-32.png',
   './games/knotlight/screenshots/cover.png',
+  './games/lullwater/',
+  './games/lullwater/index.html',
+  './games/lullwater/game.js',
+  './games/lullwater/songs.js',
+  './games/lullwater/manifest.webmanifest',
+  './games/lullwater/icons/icon-192.png',
+  './games/lullwater/icons/icon-512.png',
+  './games/lullwater/icons/icon-maskable-512.png',
+  './games/lullwater/icons/apple-touch-icon.png',
+  './games/lullwater/icons/favicon-32.png',
+  './games/lullwater/screenshots/cover.png',
   './icons/og-image.png'
 ];
 

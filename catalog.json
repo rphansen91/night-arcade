@@ -86,6 +86,23 @@
       "path": "games/knotlight/",
       "cover": "games/knotlight/screenshots/cover.png",
       "accent": "#ff8fb1"
+    },
+    {
+      "id": "lullwater",
+      "title": "Lullwater",
+      "blurb": "Tap the moonlit keys as they touch the lake, and the night plays its lullaby.",
+      "description": "A mobile-first piano-tile rhythm game on a black mountain lake. Glowing moon-glass keys drift down four lanes toward the waterline. Tap each one as it meets the water and it plays the next note of the song, with ripples, sparks and a lane of light. Hold long keys until their thread of moonlight runs out, tap twin keys together, and never touch the empty lake or let a key sink untouched. Finish a song for a star, and it starts again faster for the second and third stars, then three crowns, then an endless run that keeps speeding up. Seven public-domain songs, from a gentle Little Star to a running Canon of the Small Hours, unlock one by one. The sky changes with every star, from moonrise blue to violet, tide-glass, rose, ember and full aurora.",
+      "how": "Tap a glowing key as it reaches the waterline; each tap plays the next note. Press and hold long keys until the thread of light runs out. Tap both twin keys. Tapping the empty lake, or letting a key sink past the bottom, stops the music. Hitting right on the line scores Perfect (2 points). Clear the song for a star; it restarts faster for 3 stars, then 3 crowns, then endless. One free Second wind per run lets you keep going after a slip. Earn a star on a song to wake the next one.",
+      "tags": [
+        "rhythm",
+        "music",
+        "arcade",
+        "endless"
+      ],
+      "status": "playable",
+      "path": "games/lullwater/",
+      "cover": "games/lullwater/screenshots/cover.png",
+      "accent": "#9cc0ff"
     }
   ]
 }

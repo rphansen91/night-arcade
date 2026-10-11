@@ -79,6 +79,23 @@
         "https://rotate-rings.com/guides/closed-rings/",
         "https://rotaterings.app/tips/"
       ]
+    },
+    {
+      "date": "2026-10-11",
+      "sourceTitle": "Magic Tiles 3™: Piano Game",
+      "sourceChart": "US App Store Top Free Games #21 (observed 2026-10-11 via itunes.apple.com/us/rss/topfreeapplications/genre=6014); #1 in Music",
+      "sourceDeveloper": "Amanotes Pte. Ltd.",
+      "why": "Replaces Shadeaway (rejected as redundant with Bayshift and visually dull). Higher-ranked uncovered games were either more block/sort/escape puzzles (Bus Fever, Block Blast, Amaze GO, Arrows, Sand Blocks) or infeasible (Roblox, Fortnite, MONOPOLY GO). A real-time rhythm-tap game is a genre Night Arcade had nothing of: reflexes and music, not spatial planning, sorting, logic or rotation.",
+      "newSlug": "lullwater",
+      "newTitle": "Lullwater",
+      "notes": "Core loop kept close to the source: four lanes of keys scroll down; tap each key (the source's black tile) and it plays the next melody note; tapping an empty lane or letting a key leave the screen ends the run; the missed key is scrolled back into view and flashed red; long tiles are press-and-hold for bonus; double tiles are two keys at once; finishing the song awards a star and restarts it faster (3 stars, then 3 crowns, then an endless phase that keeps accelerating); background colour changes at each checkpoint; Perfect/Great/Good judgement by distance from the line; revive (source: ad/VIP revive) is one free Second wind per run, no ads. Lanes follow the melody's contour. Seven songs, all public-domain compositions arranged by hand (Twinkle Twinkle, Beethoven Ode to Joy / Für Elise / Moonlight Sonata, Gruber Silent Night, Greensleeves, Pachelbel Canon), retitled in-world. Own name, fiction (moon-glass keys falling onto a night lake), procedural canvas art, Web Audio piano/bell synthesis and copy. No Magic Tiles or Amanotes names, assets, songs or trademarks.",
+      "researchSources": [
+        "https://apps.apple.com/us/app/magic-tiles-3-piano-game/id1443446174",
+        "https://blacktilelounge.com/gameplay.php",
+        "https://scoredapps.com/games/magic-tiles-3-piano-game/",
+        "https://gamebass.com/game/magic_tiles_3.html",
+        "https://magic-tiles-3.io/how-to-play-magic-tiles-3/"
+      ]
     }
   ]
 }

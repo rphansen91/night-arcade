@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#050817">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Tap the falling moonkeys as they touch the lake, and the night plays its lullaby.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lullwater">
+<meta name="format-detection" content="telephone=no">
+<meta property="og:title" content="Lullwater · Night Arcade">
+<meta property="og:description" content="Tap the falling moonkeys as they touch the lake, and the night plays its lullaby.">
+<meta property="og:image" content="https://rphansen91.github.io/night-arcade/games/lullwater/screenshots/cover.png">
+<title>Lullwater</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+:root{--bg:#050817;--ink:#e8ecf6;--dim:#8d97b3;--line:rgba(156,192,255,.18);--accent:#9cc0ff;--gold:#ffd27a;--sat:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;height:100dvh;background:var(--bg);overflow:hidden;color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-user-select:none;user-select:none;touch-action:none;
+  -webkit-touch-callout:none;-webkit-text-size-adjust:100%;overscroll-behavior:none}
+body{position:fixed;inset:0}
+canvas#c{display:block;position:fixed;inset:0;z-index:1;touch-action:none;width:100%;height:100%}
+.ov{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow-y:auto;
+  padding:calc(24px + env(safe-area-inset-top,0px)) calc(20px + env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) calc(20px + env(safe-area-inset-left,0px));
+  background:rgba(4,6,16,.84);transition:opacity .35s ease;touch-action:pan-y}
+.ov.hidden{opacity:0;pointer-events:none}
+#title{justify-content:flex-end;padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));
+  background:linear-gradient(180deg,rgba(4,6,16,.05),rgba(4,6,16,.15) 40%,rgba(4,6,16,.78) 70%,rgba(4,6,16,.92))}
+.ov.soft{background:rgba(4,6,16,.62);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.eyebrow{font-size:11px;letter-spacing:.4em;text-transform:uppercase;color:var(--accent);margin:0 0 .9em}
+h1{font-weight:800;letter-spacing:.2em;font-size:clamp(34px,11vw,54px);margin:0 0 .25em;color:#f3f7ff;text-shadow:0 0 30px rgba(156,192,255,.55),0 2px 0 rgba(0,0,0,.4)}
+h2{font-weight:750;letter-spacing:.08em;font-size:clamp(22px,6.5vw,32px);margin:0 0 .35em;color:#f3f7ff}
+.lede{max-width:22em;color:#aab3cc;line-height:1.55;font-size:15px;margin:0 0 1.4em}
+.btn{font:inherit;font-weight:750;background:linear-gradient(180deg,#d6e6ff,#7fa6f0);color:#0b1430;border:none;padding:15px 44px;letter-spacing:.14em;
+  min-height:54px;font-size:14px;text-transform:uppercase;cursor:pointer;border-radius:16px;touch-action:manipulation;
+  box-shadow:0 6px 0 #3f5ea3,0 12px 34px rgba(156,192,255,.35);transition:transform .08s,box-shadow .08s}
+.btn:active{transform:translateY(4px);box-shadow:0 2px 0 #3f5ea3,0 6px 16px rgba(156,192,255,.25)}
+.ghost{font:inherit;background:rgba(12,16,34,.82);color:#cdd5ea;border:1px solid #2a3458;padding:11px 18px;letter-spacing:.1em;font-size:12px;
+  text-transform:uppercase;border-radius:12px;min-height:44px;cursor:pointer;touch-action:manipulation;font-weight:650}
+.ghost:active{transform:scale(.97)}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:1em}
+.howlist{max-width:22em;text-align:left;color:#bfc7dc;font-size:14px;line-height:1.55;margin:0 0 1.4em;padding:0;list-style:none}
+.howlist li{margin:0 0 .75em}.howlist b{color:#f3f7ff}
+#songs{justify-content:flex-start}
+#songList{width:min(420px,94vw);display:flex;flex-direction:column;gap:9px;margin:0 auto 1.1em}
+.song{display:flex;align-items:center;gap:10px;text-align:left;width:100%;padding:13px 14px;border-radius:16px;border:1px solid #27315a;cursor:pointer;
+  background:linear-gradient(135deg,rgba(26,34,70,.92),rgba(10,13,30,.92));color:var(--ink);font:inherit;touch-action:manipulation;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 8px 22px rgba(0,0,0,.35)}
+.song:active{transform:scale(.985)}
+.song .sl{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.song b{font-size:16px;letter-spacing:.02em;color:#f3f7ff}
+.song small{font-size:11px;color:var(--accent);letter-spacing:.06em}.song small .off{color:#3a4466}
+.song em{font-style:normal;font-size:12px;color:#8d97b3;line-height:1.35}
+.song .sr{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.song .st span{font-size:12px;color:#323b5e;margin-left:1px}.song .st span.on{color:var(--gold);text-shadow:0 0 8px rgba(255,210,122,.6)}
+.song .best{font-size:11px;color:#aab3cc;font-weight:650}
+.song.locked{opacity:.45}
+#hud{position:fixed;left:0;right:0;top:0;z-index:5;display:none;pointer-events:none;flex-direction:column;align-items:center;
+  padding:calc(8px + env(safe-area-inset-top,0px)) calc(10px + env(safe-area-inset-right,0px)) 0 calc(10px + env(safe-area-inset-left,0px))}
+body[data-mode=play] #hud{display:flex}
+#score{font:800 40px/1 system-ui,-apple-system,sans-serif;color:#fff;letter-spacing:.02em;text-shadow:0 0 22px rgba(156,192,255,.7),0 2px 0 rgba(0,0,0,.45);min-height:40px;margin-top:2px}
+#score.pop{animation:pop .22s ease-out}
+@keyframes pop{0%{transform:scale(1.28)}100%{transform:scale(1)}}
+#stages{display:flex;gap:4px;margin-top:4px;align-items:center}
+#stages i{font-style:normal;font-size:14px;color:rgba(200,210,240,.22);transition:color .4s,text-shadow .4s,transform .4s}
+#stages i.on{color:var(--gold);text-shadow:0 0 10px rgba(255,210,122,.8);transform:scale(1.15)}
+#endless{font:800 12px system-ui;color:var(--gold);margin-left:2px}
+#prog{position:absolute;left:calc(56px + env(safe-area-inset-left,0px));right:calc(56px + env(safe-area-inset-right,0px));top:calc(4px + env(safe-area-inset-top,0px));height:3px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden}
+#progFill{height:100%;width:100%;transform-origin:left;transform:scaleX(0);background:linear-gradient(90deg,rgba(156,192,255,.4),#e8f0ff)}
+#songName{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:calc(56px + env(safe-area-inset-right,0px));font:600 10px system-ui;color:rgba(200,210,240,.5);letter-spacing:.08em;max-width:22vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:none}
+#bPause{pointer-events:auto;position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:calc(10px + env(safe-area-inset-right,0px));z-index:6;width:38px;height:38px;border-radius:999px;
+  background:rgba(8,11,24,.72);border:1px solid var(--line);color:#dfe6f6;font:700 16px/1 system-ui;cursor:pointer;display:none;align-items:center;justify-content:center;touch-action:manipulation;
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+body[data-mode=play] #bPause{display:flex}
+#toast{position:fixed;left:50%;top:calc(110px + env(safe-area-inset-top,0px));transform:translateX(-50%) translateY(-6px);z-index:30;
+  background:rgba(10,14,30,.9);border:1px solid var(--line);color:#e6ecf8;padding:10px 16px;border-radius:12px;font:600 13px/1.35 system-ui;
+  width:max-content;max-width:min(320px,86vw);text-align:center;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:16px;width:min(280px,86vw);margin:0 auto .7em;color:#cdd5ea;font-size:14px}
+.toggle button{min-width:64px;min-height:40px}
+.bigscore{font:800 64px/1 system-ui;color:#fff;text-shadow:0 0 30px rgba(156,192,255,.6);margin:.05em 0 .15em}
+.stagesBig span{font-size:24px;color:rgba(200,210,240,.2);margin:0 2px}.stagesBig span.on{color:var(--gold);text-shadow:0 0 14px rgba(255,210,122,.7)}
+.stat{color:var(--dim);font-size:13px;margin:.6em 0 .2em;max-width:22em;line-height:1.5}
+#bRevive{background:linear-gradient(180deg,#ffe6a8,#f0b54e);color:#2a1a04;box-shadow:0 6px 0 #9c6a1d,0 12px 30px rgba(255,210,122,.3)}
+#bRevive small{display:block;font-size:10px;letter-spacing:.06em;text-transform:none;font-weight:650;opacity:.75;margin-top:3px}
+#arcadeBack{position:fixed;left:calc(10px + env(safe-area-inset-left,0px));top:calc(10px + env(safe-area-inset-top,0px));z-index:100;height:38px;min-width:38px;
+  display:inline-flex;align-items:center;justify-content:center;padding:0 12px;border-radius:999px;background:rgba(8,11,24,.78);color:#d6e4ff;
+  border:1px solid rgba(156,192,255,.4);font:600 12px/1 system-ui,-apple-system,sans-serif;letter-spacing:.04em;text-decoration:none;
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+body[data-mode=play] #arcadeBack{padding:0;width:38px;font-size:16px}
+body[data-mode=play] #arcadeBack .lbl{display:none}
+html.cover #hud,html.cover #toast,html.cover #arcadeBack,html.cover #bPause{display:none!important}
+</style>
+</head>
+<body data-mode="title">
+<canvas id="c"></canvas>
+
+<div id="hud">
+  <div id="prog"><div id="progFill"></div></div>
+  <span id="songName"></span>
+  <div id="score">0</div>
+  <div id="stages"><i>★</i><i>★</i><i>★</i><i>♛</i><i>♛</i><i>♛</i><span id="endless"></span></div>
+</div>
+<button id="bPause" aria-label="Pause">❚❚</button>
+<div id="toast"></div>
+
+<section class="ov" id="title">
+  <p class="eyebrow">Night Arcade</p>
+  <h1>LULLWATER</h1>
+  <p class="lede">Moonlit keys drift down onto a still black lake. Touch each one as it meets the water and the night plays its lullaby. Miss one, or touch the empty lake, and the music stops.</p>
+  <button class="btn" id="bPlay">Play</button>
+  <div class="row"><button class="ghost" id="bHow">How to play</button></div>
+</section>
+
+<section class="ov hidden" id="songs">
+  <p class="eyebrow" style="margin-top:44px">Choose a song</p>
+  <div id="songList"></div>
+  <button class="ghost" id="bSongsBack">Back</button>
+</section>
+
+<section class="ov hidden" id="how">
+  <h2>How to play</h2>
+  <ul class="howlist">
+    <li><b>Tap the glowing keys</b> as they reach the waterline. Each key plays the next note of the song.</li>
+    <li><b>Never tap the empty lake</b>, and <b>don't let a key sink</b> past the bottom untouched. Either one stops the music.</li>
+    <li><b>Long keys</b> have a thread of moonlight. <b>Press and hold</b> until the thread runs out for bonus points.</li>
+    <li><b>Twin keys</b> arrive side by side. Tap both.</li>
+    <li>Finish the song to earn a <b>★</b>. It starts again, faster, for the second and third stars, then three <b>♛ crowns</b>, then the lake runs endless.</li>
+    <li>Hitting a key right on the line scores <b>Perfect</b> (2 points). One free <b>Second wind</b> per run lets you carry on after a slip.</li>
+  </ul>
+  <button class="btn" id="bHowOk">Got it</button>
+</section>
+
+<section class="ov soft hidden" id="over">
+  <p class="eyebrow" id="overEyebrow">Little Star</p>
+  <h2 id="overTitle">The water stilled</h2>
+  <div class="bigscore" id="overScore">0</div>
+  <div class="stagesBig" id="overStages"></div>
+  <p class="stat" id="overStat"></p>
+  <div class="row"><button class="btn" id="bRevive">Second wind<small>keep going · once per run</small></button></div>
+  <div class="row"><button class="ghost" id="bAgain">Play again</button><button class="ghost" id="bOverSongs">Songs</button></div>
+</section>
+
+<section class="ov soft hidden" id="pause">
+  <h2>Paused</h2>
+  <div class="toggle"><span>Sound</span><button class="ghost" id="tSound">On</button></div>
+  <div class="toggle"><span>Haptics</span><button class="ghost" id="tHaptic">On</button></div>
+  <div class="row"><button class="btn" id="bResume">Resume</button></div>
+  <div class="row"><button class="ghost" id="bPauseHow">How to play</button><button class="ghost" id="bQuit">Songs</button></div>
+</section>
+
+<script src="songs.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

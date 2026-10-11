@@ -16,6 +16,7 @@ games/
   moonroost/          one-owl-per-grove logic puzzle (night wood)
   gloamglass/         night-ink water-sort puzzle
   knotlight/          ring-untangling rotate-the-gap puzzle
+  lullwater/          piano-tile rhythm game on a moonlit lake
 screenshots/          arcade UI captures (phone viewport)
 tools/arcade-icons.html  re-render arcade icons in headless Chrome
 ```
@@ -70,3 +71,6 @@ Nested at [`games/bayshift/`](games/bayshift/). Direct play: [`games/bayshift/`]
 
 Nested at [`games/knotlight/`](games/knotlight/). Direct play: [`games/knotlight/`](https://rphansen91.github.io/night-arcade/games/knotlight/). A ring-untangling puzzle: drag glowing hoops round until their gaps slip the clips that hold them, and every freed ring flies up into the sky as a star. 24 boards with brass studs, iron pegs, closed rings, sliding bars and embers. Rules live in `logic.js` (shared by the game and the tools); every board is proven clearable by `node games/knotlight/tools/solve.js`.
 
+## Lullwater
+
+Nested at [`games/lullwater/`](games/lullwater/). Direct play: [`games/lullwater/`](https://rphansen91.github.io/night-arcade/games/lullwater/). A piano-tile rhythm game: tap moon-glass keys as they meet the lake and each plays the next note; hold long keys, tap twin keys, never touch the empty water. Seven public-domain songs, each climbing through 3 stars, 3 crowns and an endless phase. Every song and stage is fairness-checked by `node games/lullwater/tools/check.js`.

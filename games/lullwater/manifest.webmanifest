@@ -1,0 +1,16 @@
+{
+  "name": "Lullwater",
+  "short_name": "Lullwater",
+  "description": "Tap the falling moonkeys as they touch the lake, and the night plays its lullaby.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#050817",
+  "theme_color": "#050817",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
