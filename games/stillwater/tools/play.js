@@ -1,47 +1,60 @@
-// WebKit iPhone play-through: real pointer input on every pond, screenshots, fps. Needs server on :8817.
+// iPhone-sized play-through with real pointer input (down / move / up) on every pond, plus screenshots and fps.
+// Needs a static server on :8817 at the repo root. CHROME=1 uses /usr/bin/google-chrome instead of WebKit.
 const pw = require('playwright'), path = require('path');
-const out = process.argv[2] || '/workspace/stillwater/shots';
+const out = process.argv[2] || '/workspace/stillwater/shots2';
+const BASE = process.env.BASE || 'http://127.0.0.1:8817';
 (async () => {
   require('fs').mkdirSync(out, { recursive: true });
   const b = process.env.CHROME ? await pw.chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--autoplay-policy=no-user-gesture-required'] }) : await pw.webkit.launch();
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
   const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('console', m => m.type() === 'error' && errs.push(m.text()));
-  await p.goto('http://127.0.0.1:8817/games/stillwater/'); await p.waitForTimeout(1500);
-  await p.screenshot({ path: path.join(out, '1-title.png') });
+  await p.goto(BASE + '/games/stillwater/?' + Date.now()); await p.waitForTimeout(1500);
   const results = [];
   for (let i = 0; i < 8; i++) {
-    await p.evaluate(i => { Still.startPond(i); }, i); await p.waitForTimeout(700);
-    if (i === 2) await p.screenshot({ path: path.join(out, 'intro-3.png') });
+    await p.evaluate(i => Still.startPond(i), i); await p.waitForTimeout(600);
     await p.evaluate(() => Still.play());
-    let shot = false; const t0 = Date.now();
-    while (Date.now() - t0 < 60000) {
-      const s = await p.evaluate(() => { const st = Still.st; return { won: st.won, lost: st.lost, t: st.t, win: st.P.win, sp: st.sp.map(s => ({ k: s.k, c: s.control, a: SW.active(s, st.t), cool: s.cool, hold: s.hold, per: s.period, ph: s.phase, px: Still.toPx(SW.pos(s, st.t)), n: SW.pos(s, st.t) })), asp: Still.aspect() }; });
-      if (s.won || s.lost) { results.push({ i, won: s.won, t: s.t.toFixed(1) }); break; }
-      const tgt = s.sp.find(x => x.c && x.a && x.cool <= 0);
-      if (!tgt) { await p.waitForTimeout(100); continue; }
-      // choose release time: next crest at least hold+0.15s away
-      const h = tgt.hold + 0.15; const phNow = (((s.t / tgt.per + tgt.ph) % 1) + 1) % 1;
-      let wait = (1 - phNow) * tgt.per - h; while (wait < 0.05) wait += tgt.per;
-      // thorn proximity check is done by game; just aim at spirit
-      await p.waitForTimeout(wait * 1000 - 40);
-      // re-aim: is a thorn closer now?
-      const ok = await p.evaluate(k => { const st = Still.st, s = st.sp[k], q = SW.pos(s, st.t); return SW.targetAt(st, q.x, q.y, Still.aspect()) === k; }, tgt.k);
-      if (!ok) { await p.waitForTimeout(300); continue; }
-      await p.mouse.move(tgt.px.x, tgt.px.y); await p.mouse.down();
-      if (!shot && i === 5) { await p.waitForTimeout(h * 700); await p.screenshot({ path: path.join(out, '2-pond6-hold.png') }); await p.waitForTimeout(h * 300); shot = true; }
-      else await p.waitForTimeout(h * 1000);
-      // fine-correct to crest using game clock
-      for (let g = 0; g < 10; g++) { const d = await p.evaluate(k => SW.crestDist(Still.st.sp[k], Still.st.t), tgt.k); if (d < s.win * 0.3) break; await p.waitForTimeout(30); }
-      await p.mouse.up();
-      if (i === 2) { await p.waitForTimeout(350); await p.screenshot({ path: path.join(out, '3-pond3-calm.png') }); }
-      await p.waitForTimeout(200);
+    const t0 = Date.now(); let shotAim = false, shotPerfect = false, throws = 0;
+    while (Date.now() - t0 < 90000) {
+      const plan = await p.evaluate(() => {
+        const st = Still.st; if (st.won) return { won: true, t: st.t, stats: st.stats };
+        if (st.rings.some(r => r.t0 > st.t)) return null;
+        const t0 = st.t + SW.GLIDE_T + 0.25; let best = null;
+        for (let x = 0.04; x <= 0.96; x += 0.04) for (let y = 0.04; y <= 0.96; y += 0.04) {
+          const f = SW.forecast(st, x, y, t0); if (f.some(o => o.thorn)) continue;
+          let sc = 0; for (const o of f) if (!o.thorn) sc += o.g === 'perfect' ? 3 : o.g === 'good' ? 1 : 0;
+          if (sc >= 3 && (!best || sc > best.sc)) best = { x, y, sc };
+        }
+        return best ? Object.assign(best, Still.toPx(best)) : null;
+      });
+      if (plan && plan.won) { results.push({ i, won: true, t: plan.t.toFixed(1), throws, ...plan.stats }); break; }
+      if (!plan) { await p.waitForTimeout(60); continue; }
+      const flick = throws % 3 === 2; // every third throw is a flick that glides onto the spot
+      if (flick) {
+        const g = (1 - Math.exp(-5 * 0.38)) / 5, vx = 520; // px/s to the right
+        const sx = plan.x - vx * g; await p.mouse.move(sx - 30, plan.y); await p.mouse.down();
+        for (let k = 1; k <= 4; k++) { await p.mouse.move(sx - 30 + k * 7.5, plan.y); }
+        await p.mouse.up();
+      } else {
+        await p.mouse.move(plan.x - 10, plan.y + 8); await p.mouse.down();
+        await p.mouse.move(plan.x - 4, plan.y + 3, { steps: 3 }); await p.mouse.move(plan.x, plan.y, { steps: 3 });
+        if (i === 5 && !shotAim) { await p.waitForTimeout(120); await p.screenshot({ path: path.join(out, '1-aim-preview.png') }); shotAim = true; }
+        await p.waitForTimeout(140); await p.mouse.up();
+      }
+      throws++;
+      if (i === 1 && !shotPerfect) { await p.waitForTimeout(1100); await p.screenshot({ path: path.join(out, '2-ripple-cancel.png') }); shotPerfect = true; }
+      await p.waitForTimeout(120);
     }
     const fps = await p.evaluate(() => window.__fps);
-    results[results.length - 1].fps = fps.toFixed(0);
-    await p.waitForTimeout(2600);
-    if (i === 0) await p.screenshot({ path: path.join(out, '4-end-card.png') });
+    if (!results[i]) results.push({ i, won: false });
+    results[i].fps = fps.toFixed(0);
+    await p.waitForTimeout(2700);
+    if (i === 2) {
+      await p.evaluate(() => document.querySelector('#eRef .chip').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
+      await p.waitForTimeout(500); await p.screenshot({ path: path.join(out, '3-end-card.png') });
+    }
   }
-  await p.evaluate(() => Still.storyBeat('bell')); await p.waitForTimeout(2600); await p.screenshot({ path: path.join(out, '5-bell.png') });
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('stillwater:v1')); s.reviews.forEach(r => r.due = 0); localStorage.setItem('stillwater:v1', JSON.stringify(s)); });
+  await p.reload(); await p.waitForTimeout(1500); await p.screenshot({ path: path.join(out, '4-title-review.png') });
   console.log(JSON.stringify(results), 'errors:', errs);
   await b.close();
 })();

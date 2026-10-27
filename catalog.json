@@ -8,12 +8,12 @@
     {
       "id": "stillwater",
       "title": "Stillwater",
-      "blurb": "Breathe, hold, and release a ripple at just the right moment to calm the restless spirits of a moonlit pond.",
-      "description": "A mobile-first ripple game in ink and ember. Every worry is a spirit sending waves across a dark pond. Hold to gather a breath, then let go when its ring hugs the spirit, and your gold ripple meets its wave and cancels it into stillness. Thorns are things that aren't yours to fix, and touching them only doubles them. Eight ponds teach one idea each, from the Stoic dichotomy of control to the Buddha's second arrow, and every cleared pond gives you an if-then plan to keep.",
-      "how": "Press and hold anywhere near a spirit to breathe in, and the gold arc fills. Watch its timing ring shrink. Release when the ring turns gold and hugs the glyph. A good release calms one knot. Releasing too early does nothing, and releasing late makes a splash. Never press on a silver thorn, which doubles it. If the enso's dots run out, the pond overflows. Calm every spirit to still the water.",
+      "blurb": "Drag and flick a gold ripple so it meets each restless spirit's wave in counter-phase, and let the thorns that aren't yours drift away.",
+      "description": "A calm, mobile-first ripple game in ink and ember. Each spirit on the moonlit pond is a real situation named for the idea that settles it: Criticism and the dichotomy of control, Craving and non-grasping, Sunk cost and deciding forward. Drag a gold stone, then flick or let go. It glides, settles, and sends a ring that cancels a wave where it arrives at the crest. One ring can calm several spirits in a chain. Silver thorns aren't yours: reach for them and they grow and linger. There are no timers and no failing. Each pond ends with a teaching line about what you just did, an if-then plan, and a small reflection choice that comes back later for review.",
+      "how": "Touch anywhere to pick up the gold stone and drag it. Arcs show where your ring will meet each spirit. They glow gold when it will arrive in counter-phase, and the ring on the spirit hugs it for a perfect. Let go to drop the stone, or flick it to glide. Keep thorns outside the faint inner circle so your ring doesn't make them grow. Calm every spirit and let the thorns drift out to still the pond.",
       "tags": [
         "calm",
-        "timing",
+        "physics",
         "learning"
       ],
       "status": "playable",

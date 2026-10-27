@@ -1,15 +1,17 @@
 /* Stillwater — ink & ember. Analytic wave superposition rendered as glowing crest lines.
-   Input: pointerdown/up only (no touchstart: iOS double-fires). */
+   Core: drag a gold stone, flick or let go; it glides, settles and sends a ring that cancels a spirit's
+   wave where it arrives in counter-phase. Input: pointer events only (down/move, plus up to let go). */
 (function () {
   'use strict';
   const SW = window.SW, PONDS = SW.PONDS;
   const cv = document.getElementById('c'), g = cv.getContext('2d');
   const $ = id => document.getElementById(id);
   const TAU = Math.PI * 2, clamp = (v, a, b) => v < a ? a : v > b ? b : v, lerp = (a, b, t) => a + (b - a) * t;
+  const FONT = '"Hiragino Mincho ProN","Songti SC","Iowan Old Style",Palatino,Georgia,serif';
   let W = 0, H = 0, DPR = 1, top = 0, bot = 0;
   const CELL = 3; let GW = 0, GH = 0, fc, fx, fimg, bc, bx, bgc, vgc;
   const SAVE_KEY = 'stillwater:v1';
-  let save = { unlocked: 1, plans: [], done: [] };
+  let save = { unlocked: 1, plans: [], done: [], reviews: [] };
   try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) {}
   const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} };
 
@@ -134,6 +136,8 @@
     au.breath = ac.createGain(); au.breath.gain.value = 0; ns.connect(au.bp); au.bp.connect(au.breath); au.breath.connect(au.master); ns.start();
     au.noise = nb;
     au.drone.gain.setTargetAtTime(0.16, ac.currentTime, 2.5);
+    // harmony that fills in as the pond resolves (D major add9 over the D drone)
+    au.res = [293.66, 369.99, 440, 659.25].map(f => { const o = ac.createOscillator(), gn = ac.createGain(); o.type = 'sine'; o.frequency.value = f; gn.gain.value = 0; o.connect(gn); gn.connect(au.bus); o.start(); return gn; });
   }
   const PENTA = [293.66, 349.23, 392, 440, 523.25, 587.33, 698.46];
   let pi = 0;
@@ -160,94 +164,131 @@
     if (!ac) return; const t = ac.currentTime, s = ac.createBufferSource(), bp = ac.createBiquadFilter(), gn = ac.createGain();
     s.buffer = au.noise; bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = 1.2; s.connect(bp); bp.connect(gn); gn.connect(au.bus); env(gn, t, 0.01, v, d); s.start(t); s.stop(t + d + 0.1);
   }
+  function setRes(f) { if (!ac) return; au.res.forEach((gn, i) => gn.gain.setTargetAtTime(f > i / 4 + 0.01 ? 0.03 - i * 0.004 : 0, ac.currentTime, 1.2)); }
+  function plop() { if (!ac) return; const t = ac.currentTime, o = ac.createOscillator(), gn = ac.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(520, t); o.frequency.exponentialRampToValueAtTime(180, t + 0.12); o.connect(gn); gn.connect(au.bus); env(gn, t, 0.003, 0.22, 0.25); o.start(t); o.stop(t + 0.3); hiss(0.05, 2400, 0.25); }
   function sub() { if (!ac) return; const t = ac.currentTime, o = ac.createOscillator(), gn = ac.createGain(); o.frequency.setValueAtTime(58, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.25); o.connect(gn); gn.connect(au.master); env(gn, t, 0.004, 0.5, 0.28); o.start(t); o.stop(t + 0.35); }
 
   // ---------- game state
-  let mode = 'title', st = null, pondIx = 0, rings = [], motes = [], dying = [], hold = null, slow = 0, shake = 0, flash = 0;
+  let mode = 'title', st = null, pondIx = 0, rings = [], motes = [], dying = [], drag = null, stones = [], inks = [], floats = [], restT = 0, sinceGood = 0, lastThrow = 0, grewToast = 0, slow = 0, shake = 0, flash = 0;
   let clock = 0, lastCalmAt = 0, hintShown = 0, sinceHintMiss = 0, koi = [], storyT = 0, clarity = 0;
   for (let i = 0; i < 4; i++) koi.push({ a: Math.random() * TAU, r: 0.3 + Math.random() * 0.25, s: (0.03 + Math.random() * 0.03) * (i % 2 ? 1 : -1), ph: Math.random() * TAU });
 
   function amp(s) { return s.control ? 0.34 + 0.2 * s.stage : 0.42 * s.amp; }
-  const K = TAU / 52, OMEGA_MUL = 2;
+  const K = TAU / 52, OMEGA_MUL = 1.3;
 
   function startPond(i) {
-    pondIx = i; st = SW.make(i); rings = []; motes = []; dying = []; hold = null; clock = 0; lastCalmAt = 0; hintShown = 0; sinceHintMiss = 0; clarity = 0;
+    pondIx = i; st = SW.make(i, aspect()); rings = []; motes = []; dying = []; drag = null; stones = []; inks = []; floats = []; sinceGood = 0; lastThrow = 0; grewToast = 0; setRes(0); clock = 0; lastCalmAt = 0; hintShown = 0; sinceHintMiss = 0; clarity = 0;
     $('hn').textContent = ROMAN[i] + ' · ' + PONDS[i].lens.toUpperCase(); $('ht').textContent = PONDS[i].name;
     $('iNum').textContent = 'POND ' + ROMAN[i]; $('iName').textContent = PONDS[i].name; $('iLens').textContent = PONDS[i].lens;
     $('iScene').textContent = PONDS[i].scene; $('iHint').textContent = PONDS[i].hint;
     show('intro'); mode = 'intro';
   }
   const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
-  function show(id) { ['title', 'intro', 'end', 'lost', 'story'].forEach(k => $(k).classList.toggle('on', k === id)); $('hud').classList.toggle('on', id === null || id === 'intro'); $('menu').classList.toggle('on', id === null); }
+  function show(id) { ['title', 'intro', 'end', 'story'].forEach(k => $(k).classList.toggle('on', k === id)); $('hud').classList.toggle('on', id === null || id === 'intro'); $('menu').classList.toggle('on', id === null); }
   let toastT = 0; function toast(msg, dur = 3.6) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); toastT = dur; }
 
   // ---------- events from rules
   function handleEvents() {
     while (st.ev.length) {
       const e = st.ev.shift(), s = e.k != null ? st.sp[e.k] : null, p = s ? toPx(SW.pos(s, st.t)) : null;
-      if (e.type === 'calm' || e.type === 'still') {
-        rings.push({ x: p.x, y: p.y, t0: clock, A: amp(s) + 0.2, sign: -1, phs: s.phase, per: s.period, life: 2.6, front: 1 });
-        burst(p.x, p.y, 26, 'gold'); slow = 0.16; sub(); pluck(PENTA[pi++ % PENTA.length]); lastCalmAt = clock;
-        if (e.type === 'still') { dying.push({ s, x: p.x, y: p.y, t0: clock, A: amp(s) + 0.2 }); pluck(PENTA[(pi + 2) % PENTA.length] * 2, 0.12); flash = 0.35; }
-      } else if (e.type === 'splash') {
-        rings.push({ x: p.x, y: p.y, t0: clock, A: 0.55, sign: 1, phs: s.phase, per: s.period, life: 2.2, front: 1.2 });
-        hiss(0.22, 900, 0.7); shake = 0.25; burst(p.x, p.y, 12, 'teal'); sinceHintMiss++;
-        if (sinceHintMiss >= 2) { toast('Breathe in as the ring widens. Let go when it hugs the spirit and turns gold.'); sinceHintMiss = 0; }
-      } else if (e.type === 'weak') {
-        rings.push({ x: p.x, y: p.y, t0: clock, A: 0.2, sign: 0, life: 1.2, front: 0.5 });
-        toast('A fuller breath. Hold until the gold circle closes.', 2.6);
-      } else if (e.type === 'grasp') {
-        thud(); shake = 0.5; burst(p.x, p.y, 20, 'mist'); toast('Not yours. Touching it only makes it bigger. Let it pass.', 3.2);
-      } else if (e.type === 'pass') {
-        burst(p.x, p.y, 10, 'mist'); hiss(0.08, 500, 1.2);
-      } else if (e.type === 'won') { winPond(); }
-      else if (e.type === 'lost') { setTimeout(() => { mode = 'lost'; show('lost'); }, 900); hiss(0.3, 300, 1.5); }
+      if (e.type === 'throw') { hiss(0.04, 1800, 0.3); }
+      else if (e.type === 'land') {
+        const q = toPx(e.r); plop(); burst(q.x, q.y, 10, 'gold');
+        rings.push({ x: q.x, y: q.y, t0: clock, A: 0.55, sign: 0, life: SW.RMAX / SW.V, front: 1.25, spd: SW.V * pondW() });
+      } else if (e.type === 'perfect' || e.type === 'good') {
+        const pf = e.type === 'perfect';
+        rings.push({ x: p.x, y: p.y, t0: clock, A: amp(s) + 0.2, sign: -1, phs: s.phase, per: s.period, life: 2.8, front: pf ? 1.4 : 1 });
+        burst(p.x, p.y, pf ? 44 : 22, 'gold'); slow = pf ? 0.3 : 0.14; sub(); sinceGood = 0;
+        if (pf) { flash = 0.45; bell([196, 220, 261.63, 293.66][Math.min(3, e.chain - 1)], 0.24); floats.push({ x: p.x, y: p.y - 46, t0: clock, txt: e.chain > 1 ? 'perfect · chain ×' + e.chain : 'perfect', gold: 1 }); }
+        else { pluck(PENTA[pi++ % PENTA.length]); if (e.chain > 1) floats.push({ x: p.x, y: p.y - 46, t0: clock, txt: 'chain ×' + e.chain, gold: 1 }); }
+        if (e.still) { dying.push({ s, x: p.x, y: p.y, t0: clock, A: amp(s) + 0.2 }); setTimeout(() => pluck(PENTA[(pi + 2) % PENTA.length] * 2, 0.12), 180); }
+        const ctl = st.sp.filter(x => x.control), tot = ctl.reduce((a, x) => a + (x.stages || 1), 0), left = ctl.reduce((a, x) => a + (x.gone ? 0 : x.stage), 0); setRes(1 - left / tot);
+      } else if (e.type === 'near') {
+        inks.push({ x: p.x, y: p.y, t0: clock }); pluck(PENTA[0] / 2, 0.07); floats.push({ x: p.x, y: p.y - 46, t0: clock, txt: 'almost' }); sinceGood++; nudge();
+      } else if (e.type === 'miss') { sinceGood++; nudge(); }
+      else if (e.type === 'grow') {
+        thud(); shake = 0.25; burst(p.x, p.y, 16, 'mist'); floats.push({ x: p.x, y: p.y - 40, t0: clock, txt: 'it grew' });
+        if (!grewToast++) toast('Not yours. Reaching for it only makes it grow and linger. Let it drift out.', 4);
+      } else if (e.type === 'pass') { burst(p.x, p.y, 10, 'mist'); hiss(0.08, 500, 1.2); floats.push({ x: p.x, y: p.y - 30, t0: clock, txt: 'drifted away' }); }
+      else if (e.type === 'won') winPond();
     }
   }
+  function nudge() { if (sinceGood >= 3) { sinceGood = 0; toast('Watch the arc on the spirit as you drag. Let go when it glows gold and the ring hugs the spirit.', 4.5); } }
+  const DAY = 864e5;
+  let chosen = -1;
   function winPond() {
-    mode = 'still'; chord(); setTimeout(() => bell(196, 0.22), 700);
+    mode = 'still'; chord(); setRes(1); setTimeout(() => bell(196, 0.22), 700);
     save.done[pondIx] = 1; save.unlocked = Math.max(save.unlocked, Math.min(PONDS.length, pondIx + 2)); persist();
     const P = PONDS[pondIx];
     setTimeout(() => {
-      $('eQuote').textContent = '“' + P.teach + '”'; $('eCite').textContent = P.cite;
+      $('eQuote').textContent = SW.lesson(st); $('eCite').textContent = P.cite;
       $('ePlan').innerHTML = ''; const sp = document.createElement('span'); sp.textContent = 'If ' + P.plan[0] + ', then ' + P.plan[1] + '.'; $('ePlan').appendChild(sp);
       $('bKeep').textContent = 'Keep this plan'; $('bNext').textContent = pondIx === PONDS.length - 1 ? 'Rest' : 'Next pond';
+      chosen = -1; const rc = $('eRef'); rc.innerHTML = '';
+      P.reflect.forEach((txt, j) => { const c = document.createElement('div'); c.className = 'chip'; c.textContent = txt; c.setAttribute('role', 'button');
+        c.addEventListener('pointerdown', ev => { ev.preventDefault(); ev.stopPropagation(); audioInit(); pickReflect(j, c); }); rc.appendChild(c); });
       show('end'); mode = 'end';
     }, 2300);
   }
+  function pickReflect(j, el) {
+    const P = PONDS[pondIx];
+    save.reviews = (save.reviews || []).filter(r => !(r.pond === pondIx && r.made === new Date().toISOString().slice(0, 10)));
+    save.reviews.push({ pond: pondIx, choice: P.reflect[j], plan: 'If ' + P.plan[0] + ', then ' + P.plan[1] + '.', made: new Date().toISOString().slice(0, 10), due: Date.now() + DAY, n: 0 }); persist();
+    [...$('eRef').children].forEach(c => c.classList.toggle('on', c === el)); chosen = j; pluck(PENTA[3 + j], 0.14);
+    $('eRefNote').textContent = 'I will ask you about this tomorrow.';
+  }
+  function dueReview() { const now = Date.now(); return (save.reviews || []).find(r => r.due <= now); }
+  function showReview() {
+    const r = dueReview(), el = $('review'); el.classList.toggle('on', !!r); if (!r) return;
+    $('rvText').textContent = 'Pond ' + ROMAN[r.pond] + ' · ' + PONDS[r.pond].name + '. You chose “' + r.choice + '”. ' + r.plan + ' Did it come up?';
+  }
+  function answerReview(used) { const r = dueReview(); if (!r) return; if (used) { r.n++; r.due = Date.now() + [3, 7, 21, 60][Math.min(3, r.n - 1)] * DAY; } else r.due = Date.now() + DAY; persist(); pluck(used ? 587.33 : 392, 0.12); showReview(); }
   function burst(x, y, n, col) {
     for (let i = 0; i < n; i++) { const a = Math.random() * TAU, v = 20 + Math.random() * 90; motes.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 20, life: 1 + Math.random() * 1.4, t: 0, col, r: 0.8 + Math.random() * 1.8 }); }
   }
 
-  // ---------- input
+  // ---------- input: drag the stone, flick or let go
   function pt(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  function fingerVel() {
+    if (!drag) return { x: 0, y: 0 }; const h = drag.hist, now = performance.now(); let a = h[0];
+    for (const q of h) if (now - q.t <= 90) { a = q; break; }
+    const b = h[h.length - 1], dt = Math.max(16, b.t - a.t) / 1000; if (now - b.t > 70) return { x: 0, y: 0 };
+    let vx = (b.x - a.x) / dt, vy = (b.y - a.y) / dt; if (Math.hypot(vx, vy) < 140) vx = vy = 0; return { x: vx, y: vy };
+  }
   cv.addEventListener('pointerdown', e => {
     e.preventDefault(); audioInit();
-    if (mode !== 'play' || hold) return;
-    const p = pt(e), n = toN(p.x, p.y), k = SW.targetAt(st, n.x, n.y, aspect());
-    if (k < 0) { rings.push({ x: p.x, y: p.y, t0: clock, A: 0.18, sign: 0, life: 1.4, front: 0.6 }); pluck(PENTA[0] / 2, 0.05); return; }
-    const s = st.sp[k];
-    if (!s.control) { SW.press(st, k); return; }
-    hold = { k, t0: clock, id: e.pointerId, full: false }; try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+    if (mode === 'rest') { endRest(); return; }
+    if (mode !== 'play' || drag) return;
+    const p = pt(e); drag = { id: e.pointerId, fx: p.x, fy: p.y, x: p.x, y: p.y, hist: [{ x: p.x, y: p.y, t: performance.now() }] };
+    try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+    pluck(PENTA[2] / 2, 0.06);
   }, { passive: false });
+  cv.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) return; const p = pt(e); drag.fx = p.x; drag.fy = p.y;
+    const now = performance.now(); drag.hist.push({ x: p.x, y: p.y, t: now }); while (drag.hist.length > 2 && now - drag.hist[0].t > 160) drag.hist.shift();
+  });
   function letGo() {
-    if (!hold) return; const h = hold; hold = null; if (ac) au.breath.gain.setTargetAtTime(0, ac.currentTime, 0.08);
-    SW.release(st, h.k, (clock - h.t0));
+    if (!drag) return; const d = drag; drag = null; if (mode !== 'play') return;
+    const v = fingerVelOf(d), n = toN(d.x, d.y), r = SW.release(st, n.x, n.y, v.x / pondW(), v.y / pondH());
+    if (r) { stones.push({ r, x0: d.x, y0: d.y, t0: clock }); lastThrow = clock; } else pluck(PENTA[0] / 2, 0.04);
   }
-  cv.addEventListener('pointerup', e => { if (hold && e.pointerId === hold.id) letGo(); });
-  cv.addEventListener('pointercancel', e => { if (hold && e.pointerId === hold.id) letGo(); });
+  function fingerVelOf(d) { const keep = drag; drag = d; const v = fingerVel(); drag = keep; return v; }
+  cv.addEventListener('pointerup', e => { if (drag && e.pointerId === drag.id) letGo(); });
+  cv.addEventListener('pointercancel', e => { if (drag && e.pointerId === drag.id) letGo(); });
   const tap = (id, fn) => $(id).addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); audioInit(); fn(); });
   tap('bBegin', () => startPond(Math.min(save.unlocked - 1, PONDS.length - 1)));
-  tap('bGo', () => { show(null); mode = 'play'; bell(196, 0.12); });
-  tap('bRetry', () => startPond(pondIx));
+  tap('bGo', () => { show(null); mode = 'play'; bell(196, 0.12); lastThrow = clock; });
+  tap('bRest', () => { show(null); $('hud').classList.remove('on'); mode = 'rest'; restT = 0; chord(); });
+  function endRest() { mode = 'end'; show('end'); }
+  tap('rvYes', () => answerReview(true)); tap('rvNo', () => answerReview(false));
   tap('bKeep', () => { const P = PONDS[pondIx]; save.plans.push({ d: new Date().toISOString().slice(0, 10), pond: pondIx, text: 'If ' + P.plan[0] + ', then ' + P.plan[1] + '.' }); persist(); $('bKeep').textContent = 'Kept ✓'; pluck(587.33, 0.15); });
   tap('bNext', () => {
     if (pondIx === 2 && !save.bell) { save.bell = 1; persist(); return storyBeat('bell'); }
     if (pondIx === PONDS.length - 1) return storyBeat('hook');
     startPond(pondIx + 1);
   });
-  tap('bStory', () => { if (storyKind === 'bell') startPond(3); else { mode = 'title'; buildPonds(); show('title'); } });
-  tap('menu', () => { hold = null; mode = 'title'; buildPonds(); show('title'); });
+  tap('bStory', () => { if (storyKind === 'bell') startPond(3); else { mode = 'title'; buildPonds(); show('title'); showReview(); } });
+  tap('menu', () => { drag = null; mode = 'title'; buildPonds(); show('title'); showReview(); });
   let storyKind = '';
   function storyBeat(kind) {
     storyKind = kind; mode = 'story'; storyT = 0; rings = []; dying = [];
@@ -267,14 +308,15 @@
   // ---------- wave field
   function renderField(t) {
     const src = [];
-    if (st && mode !== 'story') {
+    if (st && mode !== 'story' && mode !== 'rest' && mode !== 'title') {
       for (const s of st.sp) if (SW.active(s, st.t)) { const p = toPx(SW.pos(s, st.t)); src.push({ x: p.x, y: p.y, A: amp(s), w: TAU / s.period * OMEGA_MUL, ph: s.phase * TAU, ch: s.control ? 0 : 1 }); }
       for (const d of dying) { const u = (clock - d.t0) / 1.8; if (u < 1) src.push({ x: d.x, y: d.y, A: d.A * (1 - u) * (1 - u), w: TAU / d.s.period * OMEGA_MUL, ph: d.s.phase * TAU, ch: 0 }); }
-    } else if (mode === 'title' || mode === 'story') {
+    } 
+    if (mode === 'title' || mode === 'story' || mode === 'rest') {
       src.push({ x: W * 0.5, y: H * 0.62, A: 0.5, w: 1.4, ph: 0, ch: 0 }, { x: W * 0.2, y: H * 0.3, A: 0.35, w: 1.7, ph: 1, ch: 1 });
     }
     const rs = [];
-    for (const r of rings) { const age = clock - r.t0; if (age < r.life) rs.push({ x: r.x, y: r.y, R: age * 210, A: r.A, f: 1 - age / r.life, sign: r.sign, w: r.per ? TAU / r.per * OMEGA_MUL : 0, ph: (r.phs || 0) * TAU, front: r.front }); }
+    for (const r of rings) { const age = clock - r.t0; if (age < r.life) rs.push({ x: r.x, y: r.y, R: age * (r.spd || 210), A: r.A, f: 1 - age / r.life, sign: r.sign, w: r.per ? TAU / r.per * OMEGA_MUL : 0, ph: (r.phs || 0) * TAU, front: r.front }); }
     const d = fimg.data, ns = src.length, nr = rs.length, tw = t * 7.3;
     let o = 0;
     for (let j = 0; j < GH; j++) {
@@ -305,8 +347,8 @@
     fx.putImageData(fimg, 0, 0);
     bx.clearRect(0, 0, bc.width, bc.height); bx.drawImage(fc, 0, 0, bc.width, bc.height);
     g.save(); g.globalCompositeOperation = 'lighter'; g.imageSmoothingEnabled = true;
-    g.globalAlpha = 0.85; g.drawImage(fc, 0, 0, GW * CELL, GH * CELL);
-    g.globalAlpha = 0.7; g.drawImage(bc, -CELL, -CELL, GW * CELL + CELL * 2, GH * CELL + CELL * 2);
+    g.globalAlpha = 0.68; g.drawImage(fc, 0, 0, GW * CELL, GH * CELL);
+    g.globalAlpha = 0.55; g.drawImage(bc, -CELL, -CELL, GW * CELL + CELL * 2, GH * CELL + CELL * 2);
     g.restore();
   }
 
@@ -317,18 +359,27 @@
       const p = toPx(SW.pos(s, st.t)), ph = SW.phaseOf(s, st.t), cd = SW.crestDist(s, st.t);
       const S = (s.control ? 26 + s.stage * 3.5 : 24 + s.amp * 4) * (1 + 0.07 * Math.cos(ph * TAU));
       const col = s.control ? [79, 227, 193] : s.kind === 'lotus' ? [210, 200, 240] : [159, 178, 204];
-      const isT = hold && hold.k === s.k;
       // glow pool
       const rg = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, S * 2.4);
       rg.addColorStop(0, `rgba(${col},${s.control ? 0.22 : 0.12})`); rg.addColorStop(1, 'rgba(0,0,0,0)');
       g.globalCompositeOperation = 'lighter'; g.fillStyle = rg; g.fillRect(p.x - S * 2.4, p.y - S * 2.4, S * 4.8, S * 4.8);
-      // timing ring (controllables): contracts to hug the glyph at the breath crest
+      // breathing ring: hugs the glyph at each crest, so the rhythm is always readable
       if (s.control) {
-        const inWin = cd <= st.P.win * 0.5, rr = S * 1.15 + cd * 2 * S * 1.9;
-        g.lineWidth = inWin ? 2.6 : 1.3; g.strokeStyle = inWin ? 'rgba(242,193,78,.95)' : `rgba(${col},.38)`;
+        const rr = S * 1.15 + cd * 2 * S * 1.6, fc = forecastFor(s.k);
+        g.lineWidth = 1.2; g.strokeStyle = `rgba(${col},${fc ? 0.18 : 0.34})`;
         g.beginPath(); for (let a = 0; a <= 64; a++) { const an = a / 64 * TAU, wob = 1 + Math.sin(an * 5 + t * 0.8 + s.k) * 0.025; const X = p.x + Math.cos(an) * rr * wob, Y = p.y + Math.sin(an) * rr * wob; a ? g.lineTo(X, Y) : g.moveTo(X, Y); } g.stroke();
-        // knot beads = stages left
+        // meeting ring: where the spirit's wave will be when your ring arrives (perfect = hugging, gold)
+        if (fc) {
+          const mr = S * 1.15 + fc.off * 2 * S * 1.6, gd = fc.g, gold = gd === 'perfect' || gd === 'good';
+          // the perfect window, a soft gold band on the glyph
+          g.lineWidth = Math.max(2, st.P.win * 0.22 * 2 * S * 1.6 * 2); g.strokeStyle = 'rgba(242,193,78,.13)'; g.beginPath(); g.arc(p.x, p.y, S * 1.15, 0, TAU); g.stroke();
+          g.lineWidth = gd === 'perfect' ? 3.2 : 2; g.strokeStyle = gd === 'perfect' ? `rgba(255,236,170,${0.85 + 0.15 * Math.sin(t * 14)})` : gold ? 'rgba(242,193,78,.85)' : gd === 'near' ? 'rgba(159,178,204,.55)' : 'rgba(159,178,204,.28)';
+          g.beginPath(); g.arc(p.x, p.y, mr, 0, TAU); g.stroke();
+          if (gd === 'perfect') { const hg = g.createRadialGradient(p.x, p.y, S * 0.6, p.x, p.y, S * 2.2); hg.addColorStop(0, 'rgba(242,193,78,.22)'); hg.addColorStop(1, 'rgba(0,0,0,0)'); g.globalCompositeOperation = 'lighter'; g.fillStyle = hg; g.fillRect(p.x - S * 2.2, p.y - S * 2.2, S * 4.4, S * 4.4); }
+        }
         for (let q = 0; q < s.stage; q++) { const an = -Math.PI / 2 + (q - (s.stage - 1) / 2) * 0.32; g.fillStyle = 'rgba(242,193,78,.85)'; g.beginPath(); g.arc(p.x + Math.cos(an) * (S * 1.15 + 9), p.y + Math.sin(an) * (S * 1.15 + 9), 2.2, 0, TAU); g.fill(); }
+      } else if (forecastFor(s.k)) {
+        g.setLineDash([3, 5]); g.lineWidth = 1.5; g.strokeStyle = `rgba(255,140,110,${0.5 + 0.3 * Math.sin(t * 8)})`; g.beginPath(); g.arc(p.x, p.y, S * 1.5, 0, TAU); g.stroke(); g.setLineDash([]);
       }
       // brush glyph: wide soft pass then ink core then bright edge
       g.globalCompositeOperation = 'lighter';
@@ -338,20 +389,15 @@
       g.globalCompositeOperation = 'lighter';
       g.fillStyle = `rgba(${col},${s.control ? 0.9 : 0.55})`; for (const k of GLYPH[s.kind]) drawStroke(k, p.x, p.y, S * 0.96, 1, s.k + 3);
       if (!s.control && s.amp > 1) { g.fillStyle = `rgba(255,120,90,${0.12 * s.amp})`; for (const k of GLYPH[s.kind]) drawStroke(k, p.x, p.y, S * 1.2, 1, s.k); }
-      // charge arc while holding
-      if (isT) {
-        const hp = clamp((clock - hold.t0) / s.hold, 0, 1), R0 = S * 1.15 + 4;
-        g.lineWidth = 4; g.strokeStyle = 'rgba(242,193,78,.95)'; g.beginPath(); g.arc(p.x, p.y, R0, -Math.PI / 2, -Math.PI / 2 + hp * TAU); g.stroke();
-        if (hp >= 1) { g.lineWidth = 1.5; g.strokeStyle = `rgba(255,241,194,${0.5 + 0.4 * Math.sin(t * 9)})`; g.beginPath(); g.arc(p.x, p.y, R0 + 7, 0, TAU); g.stroke(); }
-        // inhale motes converge
-        if (Math.random() < 0.5) { const a = Math.random() * TAU, d = S * 3; motes.push({ x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, vx: -Math.cos(a) * d * 1.3, vy: -Math.sin(a) * d * 1.3, life: 0.7, t: 0, col: 'gold', r: 1.2 }); }
-      }
       g.globalCompositeOperation = 'source-over';
       // label
-      g.font = 'italic 13px ' + getComputedStyle(document.body).fontFamily; g.textAlign = 'center';
+      g.font = 'italic 14px ' + FONT; g.textAlign = 'center';
       g.fillStyle = s.control ? 'rgba(230,255,248,.85)' : 'rgba(190,200,220,.75)';
-      g.fillText(s.label, p.x, p.y + S * 1.15 + (s.control ? 30 : 24));
-      if (!s.control) { g.font = '10px ' + getComputedStyle(document.body).fontFamily; g.fillStyle = 'rgba(159,178,204,.6)'; g.fillText('N O T   Y O U R S', p.x, p.y + S * 1.15 + 38); }
+      const lx = clamp(p.x, 80, W - 80);
+      g.fillText(s.label, lx, p.y + S * 1.15 + (s.control ? 30 : 24));
+      g.font = '10px ' + FONT; g.fillStyle = s.control ? 'rgba(242,193,78,.7)' : 'rgba(159,178,204,.6)';
+      const sub = s.control ? s.concept : (forecastFor(s.k) ? 'NOT YOURS · IT WILL GROW' : 'NOT YOURS' + (s.concept ? ' · ' + s.concept : ''));
+      g.fillText(sub.toUpperCase().split('').join('\u200a'), lx, p.y + S * 1.15 + (s.control ? 45 : 38));
     }
     // unravelling spirits
     for (const d of dying) {
@@ -362,6 +408,59 @@
       const gp = glyphPoint(d.s.kind, 1 - u);
       if (gp) for (let q = 0; q < 3; q++) motes.push({ x: d.x + gp[0] * S, y: d.y - u * 14 + gp[1] * S, vx: (Math.random() - 0.5) * 30, vy: -20 - Math.random() * 40, life: 1.4, t: 0, col: 'gold', r: 1 + Math.random() * 1.4 });
       g.globalCompositeOperation = 'source-over';
+    }
+  }
+  // ---------- aim preview, gliding stones, ink fades, floating words
+  let fcast = null;
+  function forecastFor(k) { return fcast && fcast.find(o => o.k === k); }
+  function updateForecast() {
+    fcast = null; if (!drag || mode !== 'play') return;
+    const v = fingerVel(), n = toN(drag.x, drag.y), sp = SW.settle(n.x, n.y, v.x / pondW(), v.y / pondH());
+    drag.settle = sp; fcast = SW.forecast(st, sp.x, sp.y, st.t + SW.GLIDE_T);
+  }
+  function drawStone(x, y, r, a) {
+    g.globalCompositeOperation = 'lighter';
+    const rg = g.createRadialGradient(x, y, 0, x, y, r * 3.2); rg.addColorStop(0, `rgba(242,193,78,${0.5 * a})`); rg.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = rg; g.fillRect(x - r * 3.2, y - r * 3.2, r * 6.4, r * 6.4);
+    g.fillStyle = `rgba(255,236,180,${a})`; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+    g.globalCompositeOperation = 'source-over';
+  }
+  function drawPreview(t) {
+    if (!drag || mode !== 'play') return;
+    const sp = drag.settle ? toPx(drag.settle) : { x: drag.x, y: drag.y }, pw = pondW(), busy = st.rings.some(r => r.t0 > st.t);
+    // reach
+    g.setLineDash([2, 7]); g.lineWidth = 1; g.strokeStyle = 'rgba(242,193,78,.12)'; g.beginPath(); g.arc(sp.x, sp.y, SW.RMAX * pw, 0, TAU); g.stroke();
+    g.strokeStyle = 'rgba(255,140,110,.10)'; g.beginPath(); g.arc(sp.x, sp.y, SW.RTHORN * pw, 0, TAU); g.stroke(); g.setLineDash([]);
+    // glide path
+    if (Math.hypot(sp.x - drag.x, sp.y - drag.y) > 4) { g.setLineDash([3, 6]); g.strokeStyle = 'rgba(255,236,180,.5)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(drag.x, drag.y); g.lineTo(sp.x, sp.y); g.stroke(); g.setLineDash([]); g.strokeStyle = 'rgba(255,236,180,.45)'; g.beginPath(); g.arc(sp.x, sp.y, 6, 0, TAU); g.stroke(); }
+    // preview arcs toward each spirit at the radius your ring will have when it meets it
+    for (const o of fcast || []) {
+      const s = st.sp[o.k], q = toPx(SW.pos(s, o.ta)), an = Math.atan2(q.y - sp.y, q.x - sp.x), R = Math.hypot(q.x - sp.x, q.y - sp.y), span = Math.min(0.9, 34 / Math.max(20, R));
+      if (o.thorn) { g.strokeStyle = 'rgba(255,140,110,.55)'; g.lineWidth = 1.5; g.setLineDash([4, 4]); }
+      else { const gd = o.g; g.strokeStyle = gd === 'perfect' ? `rgba(255,236,170,${0.8 + 0.2 * Math.sin(t * 14)})` : gd === 'good' ? 'rgba(242,193,78,.8)' : gd === 'near' ? 'rgba(159,178,204,.45)' : 'rgba(159,178,204,.2)'; g.lineWidth = gd === 'perfect' ? 3.5 : gd === 'good' ? 2.4 : 1.4; }
+      g.beginPath(); g.arc(sp.x, sp.y, R, an - span, an + span); g.stroke(); g.setLineDash([]);
+    }
+    drawStone(drag.x, drag.y, 6 + Math.sin(t * 3) * 0.6, busy ? 0.4 : 1);
+  }
+  function drawStones() {
+    for (let i = stones.length - 1; i >= 0; i--) {
+      const sn = stones[i], tau = (clock - sn.t0), u = Math.min(1, (1 - Math.exp(-SW.GLIDE_K * tau)) / (1 - Math.exp(-SW.GLIDE_K * SW.GLIDE_T))), end = toPx(sn.r);
+      if (tau >= SW.GLIDE_T) { stones.splice(i, 1); continue; }
+      const x = lerp(sn.x0, end.x, u), y = lerp(sn.y0, end.y, u); drawStone(x, y, 6 - 2 * (tau / SW.GLIDE_T), 1);
+      if (Math.random() < 0.6) motes.push({ x, y, vx: 0, vy: 0, life: 0.5, t: 0, col: 'gold', r: 1 });
+    }
+  }
+  function drawInks() {
+    for (let i = inks.length - 1; i >= 0; i--) {
+      const k = inks[i], u = (clock - k.t0) / 1.8; if (u >= 1) { inks.splice(i, 1); continue; }
+      const r = 20 + u * 60, rg = g.createRadialGradient(k.x, k.y, r * 0.3, k.x, k.y, r); rg.addColorStop(0, `rgba(3,6,12,${0.5 * (1 - u)})`); rg.addColorStop(0.7, `rgba(20,32,60,${0.25 * (1 - u)})`); rg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = rg; g.fillRect(k.x - r, k.y - r, r * 2, r * 2);
+    }
+  }
+  function drawFloats() {
+    g.textAlign = 'center';
+    for (let i = floats.length - 1; i >= 0; i--) {
+      const f = floats[i], u = (clock - f.t0) / 1.6; if (u >= 1) { floats.splice(i, 1); continue; }
+      g.font = (f.gold ? 'italic 16px ' : 'italic 13px ') + FONT; g.fillStyle = f.gold ? `rgba(255,236,170,${1 - u})` : `rgba(190,200,220,${0.8 * (1 - u)})`; g.fillText(f.txt, f.x, f.y - u * 22);
     }
   }
   function drawMotes(dt) {
@@ -412,12 +511,9 @@
   }
   function drawEnso() {
     if (!st) return; const ctl = st.sp.filter(s => s.control), tot = ctl.reduce((a, s) => a + (s.stages || 1), 0), left = ctl.reduce((a, s) => a + (s.gone ? 0 : s.stage), 0);
-    const f = clamp(1 - left / tot, 0, 1), cx = W - 34, cy = $('hud').getBoundingClientRect().top + 34 + (parseFloat(getComputedStyle($('hud')).paddingTop) - 12), r = 14;
+    const f = clamp(1 - left / tot, 0, 1), cx = W - 32, hb = $('hn').getBoundingClientRect(), cy = hb.top + 14, r = 13;
     g.lineCap = 'round'; g.strokeStyle = 'rgba(159,178,204,.25)'; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.stroke();
     g.strokeStyle = 'rgba(242,193,78,.95)'; g.lineWidth = 3.2; g.beginPath(); g.arc(cx, cy, r, -Math.PI / 2 + 0.3, -Math.PI / 2 + 0.3 + f * (TAU - 0.5)); g.stroke(); g.lineCap = 'butt';
-    // unrest: dots of overflow room
-    const room = Math.max(0, st.P.limit - SW.chaos(st));
-    for (let i = 0; i < Math.min(6, room); i++) { g.fillStyle = 'rgba(79,227,193,.6)'; g.beginPath(); g.arc(cx - 3 * 6 + i * 6 + 3, cy + r + 10, 1.6, 0, TAU); g.fill(); }
   }
 
   // ---------- loop
@@ -429,16 +525,13 @@
     clock += dt;
     if (mode === 'play' && st) {
       SW.step(st, dt);
-      if (hold) {
-        const s = st.sp[hold.k], hp = (clock - hold.t0) / s.hold;
-        if (ac) { au.breath.gain.setTargetAtTime(0.05 + 0.1 * clamp(hp, 0, 1), ac.currentTime, 0.1); au.bp.frequency.setTargetAtTime(400 + 700 * clamp(hp, 0, 1), ac.currentTime, 0.1); }
-        if (hp >= 1 && !hold.full) { hold.full = true; pluck(1174.66, 0.05); }
-        if (clock - hold.t0 > SW.MAX_HOLD || !SW.active(s, st.t)) letGo();
-      }
+      for (const d of [drag]) if (d) { d.x = lerp(d.x, d.fx, Math.min(1, rdt * 22)); d.y = lerp(d.y, d.fy, Math.min(1, rdt * 22)); }
+      updateForecast();
       handleEvents();
-      if (!hintShown && clock > 14 && clock - lastCalmAt > 14) { hintShown = 1; toast(PONDS[pondIx].hint, 5); }
-    } else if (mode === 'still' && st) { st.t += dt; handleEvents(); }
-    if (ac && st) { const c = SW.chaos(st); au.unrest.gain.setTargetAtTime(mode === 'play' ? 0.006 * c : 0, ac.currentTime, 0.4); au.u1.frequency.setTargetAtTime(146.83 * (1 + 0.006 * c), ac.currentTime, 0.4); au.u2.frequency.setTargetAtTime(220 * (1 - 0.005 * c), ac.currentTime, 0.4); }
+      if (!hintShown && clock - lastThrow > 12 && !drag) { hintShown = 1; toast(PONDS[pondIx].hint, 5); }
+    } else if ((mode === 'still' || mode === 'end') && st) { st.t += dt; handleEvents(); }
+    if (mode === 'rest') { restT += rdt; if (restT > 16) endRest(); }
+    if (ac && st) { const c = SW.unrest(st); au.unrest.gain.setTargetAtTime(mode === 'play' ? 0.004 * c : 0, ac.currentTime, 0.4); au.u1.frequency.setTargetAtTime(146.83 * (1 + 0.006 * c), ac.currentTime, 0.4); au.u2.frequency.setTargetAtTime(220 * (1 - 0.005 * c), ac.currentTime, 0.4); }
     if (toastT > 0) { toastT -= rdt; if (toastT <= 0) $('toast').classList.remove('on'); }
     for (let i = rings.length - 1; i >= 0; i--) if (clock - rings[i].t0 > rings[i].life) rings.splice(i, 1);
     for (let i = dying.length - 1; i >= 0; i--) if (clock - dying[i].t0 > 2) dying.splice(i, 1);
@@ -450,8 +543,8 @@
     drawKoi(clock);
     renderField(clock);
     if (mode === 'story') { storyT += rdt; drawBell(clock, storyT / 2.2); }
-    else if (st && mode !== 'title') drawSpirits(clock);
-    drawMotes(rdt);
+    else if (st && mode !== 'title' && mode !== 'rest') { drawInks(); drawSpirits(clock); drawStones(); drawPreview(clock); }
+    drawMotes(rdt); drawFloats();
     if (flash > 0) { flash -= rdt; g.globalCompositeOperation = 'lighter'; g.fillStyle = `rgba(255,241,194,${flash * 0.25})`; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over'; }
     g.setTransform(DPR, 0, 0, DPR, 0, 0);
     g.drawImage(vgc, 0, 0, W, H);
@@ -459,6 +552,6 @@
     requestAnimationFrame(frame);
   }
   addEventListener('resize', resize);
-  resize(); buildPonds(); requestAnimationFrame(frame);
-  window.Still = { startPond, play: () => { show(null); mode = 'play'; }, get st() { return st; }, storyBeat, get mode() { return mode; }, toPx, aspect };
+  resize(); buildPonds(); showReview(); requestAnimationFrame(frame);
+  window.Still = { get stones() { return stones; }, startPond, play: () => { show(null); mode = 'play'; }, get st() { return st; }, storyBeat, get mode() { return mode; }, toPx, aspect };
 })();
