@@ -6,6 +6,22 @@
   },
   "games": [
     {
+      "id": "stillwater",
+      "title": "Stillwater",
+      "blurb": "Breathe, hold, and release a ripple at just the right moment to calm the restless spirits of a moonlit pond.",
+      "description": "A mobile-first ripple game in ink and ember. Every worry is a spirit sending waves across a dark pond. Hold to gather a breath, then let go when its ring hugs the spirit, and your gold ripple meets its wave and cancels it into stillness. Thorns are things that aren't yours to fix, and touching them only doubles them. Eight ponds teach one idea each, from the Stoic dichotomy of control to the Buddha's second arrow, and every cleared pond gives you an if-then plan to keep.",
+      "how": "Press and hold anywhere near a spirit to breathe in, and the gold arc fills. Watch its timing ring shrink. Release when the ring turns gold and hugs the glyph. A good release calms one knot. Releasing too early does nothing, and releasing late makes a splash. Never press on a silver thorn, which doubles it. If the enso's dots run out, the pond overflows. Calm every spirit to still the water.",
+      "tags": [
+        "calm",
+        "timing",
+        "learning"
+      ],
+      "status": "playable",
+      "path": "games/stillwater/",
+      "cover": "games/stillwater/screenshots/cover.png",
+      "accent": "#f2c14e"
+    },
+    {
       "id": "the-last-lantern",
       "title": "The Last Lantern",
       "blurb": "Oil runs low in the catacombs. The watchers wait past the edge of the light.",

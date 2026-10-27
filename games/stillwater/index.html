@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b1426">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Breathe restless spirits still on a moonlit pond. Calm what is yours with a counter-ripple, and let the thorns that are not yours drift past.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Stillwater">
+<meta name="format-detection" content="telephone=no">
+<meta property="og:title" content="Stillwater · Night Arcade">
+<meta property="og:description" content="Breathe restless spirits still on a moonlit pond. Calm what is yours, and let the rest pass.">
+<meta property="og:image" content="https://rphansen91.github.io/night-arcade/games/stillwater/screenshots/cover.png">
+<title>Stillwater</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+:root{--bg:#0b1426;--ink:#e9eef7;--dim:#8a9bb8;--gold:#f2c14e;--teal:#4fe3c1;--mist:#9fb2cc;
+  --serif:"Hiragino Mincho ProN","Songti SC","Iowan Old Style","Palatino","Georgia",serif}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;height:100dvh;background:var(--bg);overflow:hidden;color:var(--ink);
+  font-family:var(--serif);-webkit-user-select:none;user-select:none;touch-action:none;-webkit-touch-callout:none;-webkit-text-size-adjust:100%;overscroll-behavior:none}
+body{position:fixed;inset:0}
+canvas#c{display:block;position:fixed;inset:0;z-index:1;touch-action:none;width:100%;height:100%}
+.ov{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow-y:auto;
+  padding:calc(28px + env(safe-area-inset-top,0px)) calc(26px + env(safe-area-inset-right,0px)) calc(28px + env(safe-area-inset-bottom,0px)) calc(26px + env(safe-area-inset-left,0px));
+  background:radial-gradient(120% 90% at 50% 40%,rgba(11,20,38,.35),rgba(5,7,12,.88));opacity:0;pointer-events:none;transition:opacity .6s ease}
+.ov.on{opacity:1;pointer-events:auto}
+.ov.clear{background:linear-gradient(180deg,rgba(5,7,12,0) 45%,rgba(5,7,12,.85) 85%);justify-content:flex-end}
+h1{font-weight:400;letter-spacing:.42em;margin:0 0 .3em .42em;font-size:34px;color:#fff3d6;text-shadow:0 0 18px rgba(242,193,78,.55),0 0 46px rgba(242,193,78,.25)}
+.sub{color:var(--mist);font-style:italic;font-size:15px;margin:0 0 30px;letter-spacing:.04em}
+.num{color:var(--gold);letter-spacing:.3em;font-size:13px;margin-bottom:10px;text-shadow:0 0 10px rgba(242,193,78,.5)}
+h2{font-weight:400;font-size:28px;margin:0 0 6px;letter-spacing:.06em}
+.lens{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--teal);margin-bottom:22px;opacity:.85}
+.scene{font-size:18px;line-height:1.55;max-width:330px;margin:0 0 18px}
+.hint{font-size:14px;line-height:1.5;color:var(--dim);max-width:310px;font-style:italic;margin:0 0 28px}
+.btn{display:inline-block;margin:6px;padding:14px 30px;border-radius:999px;font:inherit;font-size:17px;letter-spacing:.08em;color:#1a1204;
+  background:radial-gradient(120% 140% at 50% 0%,#ffe7a6,#f2c14e 55%,#b8862a);box-shadow:0 0 22px rgba(242,193,78,.45),inset 0 1px 0 rgba(255,255,255,.6);cursor:pointer}
+.btn.q{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px rgba(159,178,204,.35)}
+.quote{font-size:21px;line-height:1.5;max-width:330px;margin:0 0 8px;color:#fff6e2}
+.cite{font-size:12px;letter-spacing:.18em;color:var(--mist);margin-bottom:26px;text-transform:uppercase}
+.card{max-width:330px;width:100%;padding:18px 20px;border-radius:14px;margin-bottom:22px;text-align:left;font-size:16px;line-height:1.55;
+  background:linear-gradient(180deg,rgba(242,193,78,.10),rgba(242,193,78,.03));box-shadow:inset 0 0 0 1px rgba(242,193,78,.32)}
+.card b{color:var(--gold);font-weight:400;letter-spacing:.12em;font-size:12px;text-transform:uppercase;display:block;margin-bottom:6px}
+.ponds{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;max-width:320px;margin-top:22px}
+.pd{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--gold);
+  box-shadow:inset 0 0 0 1.5px rgba(242,193,78,.55),0 0 14px rgba(242,193,78,.18);cursor:pointer}
+.pd.lock{color:#46546c;box-shadow:inset 0 0 0 1px rgba(159,178,204,.18);cursor:default}
+.pd.done{background:radial-gradient(circle,rgba(242,193,78,.25),transparent 70%)}
+#hud{position:fixed;left:0;right:0;top:0;z-index:5;pointer-events:none;padding:calc(12px + env(safe-area-inset-top,0px)) 20px 0;text-align:center;opacity:0;transition:opacity .6s}
+#hud.on{opacity:1}
+#hud .n{font-size:11px;letter-spacing:.34em;color:var(--gold);opacity:.85}
+#hud .t{font-size:19px;letter-spacing:.06em;margin-top:2px}
+#menu{position:fixed;z-index:6;top:calc(10px + env(safe-area-inset-top,0px));left:12px;width:44px;height:44px;border-radius:50%;display:none;align-items:center;justify-content:center;color:var(--mist);font-size:20px}
+#menu.on{display:flex}
+#toast{position:fixed;left:50%;bottom:calc(30px + env(safe-area-inset-bottom,0px));transform:translate(-50%,10px);z-index:8;max-width:330px;width:calc(100% - 44px);
+  text-align:center;font-style:italic;font-size:15px;line-height:1.45;color:#fff6e2;padding:12px 18px;border-radius:14px;background:rgba(5,7,12,.72);
+  box-shadow:inset 0 0 0 1px rgba(242,193,78,.25);opacity:0;transition:opacity .4s,transform .4s;pointer-events:none}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+.story{font-size:19px;line-height:1.6;max-width:330px;margin:0 0 24px;color:#e6fff8;text-shadow:0 0 14px rgba(79,227,193,.35)}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud"><div class="n" id="hn"></div><div class="t" id="ht"></div></div>
+<div id="menu" role="button" aria-label="Ponds">☰</div>
+<div id="toast"></div>
+<div class="ov on" id="title">
+  <h1>STILLWATER</h1>
+  <p class="sub">a pond for a restless mind</p>
+  <div class="btn" id="bBegin" role="button">Begin</div>
+  <div class="ponds" id="ponds"></div>
+</div>
+<div class="ov" id="intro">
+  <div class="num" id="iNum"></div><h2 id="iName"></h2><div class="lens" id="iLens"></div>
+  <p class="scene" id="iScene"></p><p class="hint" id="iHint"></p>
+  <div class="btn" id="bGo" role="button">Breathe in</div>
+</div>
+<div class="ov" id="end">
+  <div class="num">STILL</div>
+  <p class="quote" id="eQuote"></p><div class="cite" id="eCite"></div>
+  <div class="card"><b>Today's plan</b><span id="ePlan"></span></div>
+  <div><div class="btn q" id="bKeep" role="button">Keep this plan</div><div class="btn" id="bNext" role="button">Next pond</div></div>
+</div>
+<div class="ov" id="lost">
+  <h2>The pond overflowed</h2>
+  <p class="hint" id="lHint">Nothing is lost. Breathe, and try again.</p>
+  <div class="btn" id="bRetry" role="button">Try again</div>
+</div>
+<div class="ov clear" id="story">
+  <p class="story" id="sText"></p>
+  <div class="btn" id="bStory" role="button">Continue</div>
+</div>
+<script src="logic.js"></script>
+<script src="game.js"></script>
+<script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
+</body>
+</html>

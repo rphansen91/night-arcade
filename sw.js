@@ -1,7 +1,7 @@
 /* Night Arcade — service worker.
    Caches the shell + catalog + listed game shells so the library works offline.
    Bump VERSION when shipping shell or catalog changes. */
-const VERSION = 'night-arcade-v14';
+const VERSION = 'night-arcade-v15';
 const SHELL = [
   './',
   './index.html',
@@ -50,6 +50,17 @@ const SHELL = [
   './games/gloamglass/icons/apple-touch-icon.png',
   './games/gloamglass/icons/favicon-32.png',
   './games/gloamglass/screenshots/cover.png',
+  './games/stillwater/',
+  './games/stillwater/index.html',
+  './games/stillwater/game.js',
+  './games/stillwater/logic.js',
+  './games/stillwater/manifest.webmanifest',
+  './games/stillwater/icons/icon-192.png',
+  './games/stillwater/icons/icon-512.png',
+  './games/stillwater/icons/icon-maskable-512.png',
+  './games/stillwater/icons/apple-touch-icon.png',
+  './games/stillwater/icons/favicon-32.png',
+  './games/stillwater/screenshots/cover.png',
   './games/knotlight/',
   './games/knotlight/index.html',
   './games/knotlight/game.js',
