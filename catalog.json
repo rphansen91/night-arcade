@@ -8,12 +8,12 @@
     {
       "id": "stillwater",
       "title": "Stillwater",
-      "blurb": "Drag and flick a gold ripple so it meets each restless spirit's wave in counter-phase, and let the thorns that aren't yours drift away.",
-      "description": "A calm, mobile-first ripple game in ink and ember. Each spirit on the moonlit pond is a real situation named for the idea that settles it: Criticism and the dichotomy of control, Craving and non-grasping, Sunk cost and deciding forward. Drag a gold stone, then flick or let go. It glides, settles, and sends a ring that cancels a wave where it arrives at the crest. One ring can calm several spirits in a chain. Silver thorns aren't yours: reach for them and they grow and linger. There are no timers and no failing. Each pond ends with a teaching line about what you just did, an if-then plan, and a small reflection choice that comes back later for review.",
-      "how": "Touch anywhere to pick up the gold stone and drag it. Arcs show where your ring will meet each spirit. They glow gold when it will arrive in counter-phase, and the ring on the spirit hugs it for a perfect. Let go to drop the stone, or flick it to glide. Keep thorns outside the faint inner circle so your ring doesn't make them grow. Calm every spirit and let the thorns drift out to still the pond.",
+      "blurb": "Thoughts drift down a moonlit stream. Swipe right to keep what's yours, left to let the rest float away, and grow a lantern garden.",
+      "description": "A calm, mobile-first sorting game in ink and ember. Each glowing ink stone is a real-life thought, like \"He ignored my email\", \"My reply\" or \"Money already spent\". Keep what is in your control and it lights a lantern on the shore. Release what isn't and it dissolves downstream with a soft note. Nuanced stones split into the part you influence and the part you don't. Eight ponds cover Stoic control, non-attachment, strategy (sunk cost, signal and noise) and communication. A wrong call gets a gentle wobble and a one-line why, never a fail. Each pond ends with a lesson, an if-then plan and a reflection that comes back for spaced review. The garden persists across days.",
+      "how": "Swipe a stone right if it is yours to act on, and left if it isn't. Swipe up to split stones that are partly both. A wrong swipe wobbles back with a short reason so you can try again. Streaks build a flow shimmer.",
       "tags": [
         "calm",
-        "physics",
+        "swipe",
         "learning"
       ],
       "status": "playable",

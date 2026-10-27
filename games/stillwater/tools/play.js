@@ -1,60 +1,48 @@
-// iPhone-sized play-through with real pointer input (down / move / up) on every pond, plus screenshots and fps.
-// Needs a static server on :8817 at the repo root. CHROME=1 uses /usr/bin/google-chrome instead of WebKit.
+// iPhone-sized play-through with REAL TOUCH (CDP touch events -> pointerType "touch") on every pond.
+// Needs a static server on :8817 at the repo root (or BASE=...). Uses /usr/bin/google-chrome.
 const pw = require('playwright'), path = require('path');
-const out = process.argv[2] || '/workspace/stillwater/shots2';
-const BASE = process.env.BASE || 'http://127.0.0.1:8817';
+const out = process.argv[2] || '/workspace/stillwater/shots3', BASE = process.env.BASE || 'http://127.0.0.1:8817';
 (async () => {
   require('fs').mkdirSync(out, { recursive: true });
-  const b = process.env.CHROME ? await pw.chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--autoplay-policy=no-user-gesture-required'] }) : await pw.webkit.launch();
+  const b = await pw.chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
   const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('console', m => m.type() === 'error' && errs.push(m.text()));
-  await p.goto(BASE + '/games/stillwater/?' + Date.now()); await p.waitForTimeout(1500);
+  const cdp = await ctx.newCDPSession(p);
+  await p.goto(BASE + '/games/stillwater/?' + Date.now()); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForTimeout(1200);
+  await p.evaluate(() => addEventListener('pointerdown', e => (window.__ptypes = window.__ptypes || {})[e.pointerType] = 1, true));
+  const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1 }] });
+  async function swipe(c, dir, opts = {}) {
+    const dx = dir === 'k' ? 1 : dir === 'r' ? -1 : 0, dy = dir === 's' ? -1 : 0, L = opts.short ? 40 : 170;
+    await touch('touchStart', c.x, c.y);
+    for (let i = 1; i <= 8; i++) { await touch('touchMove', c.x + dx * L * i / 8, c.y + dy * L * 0.8 * i / 8); await p.waitForTimeout(14); }
+    if (opts.hold) { await p.waitForTimeout(80); await p.screenshot({ path: opts.hold }); }
+    await touch('touchEnd');
+  }
+  const waitIdle = async () => { for (let k = 0; k < 200; k++) { const c = await p.evaluate(() => Still.card); if (c && c.st === 'idle') return c; if (await p.evaluate(() => Still.mode) !== 'play') return null; await p.waitForTimeout(50); } return null; };
   const results = [];
   for (let i = 0; i < 8; i++) {
-    await p.evaluate(i => Still.startPond(i), i); await p.waitForTimeout(600);
+    await p.evaluate(i => Still.startPond(i), i); await p.waitForTimeout(500);
+    if (i === 0) await p.screenshot({ path: path.join(out, '0-intro.png') });
     await p.evaluate(() => Still.play());
-    const t0 = Date.now(); let shotAim = false, shotPerfect = false, throws = 0;
-    while (Date.now() - t0 < 90000) {
-      const plan = await p.evaluate(() => {
-        const st = Still.st; if (st.won) return { won: true, t: st.t, stats: st.stats };
-        if (st.rings.some(r => r.t0 > st.t)) return null;
-        const t0 = st.t + SW.GLIDE_T + 0.25; let best = null;
-        for (let x = 0.04; x <= 0.96; x += 0.04) for (let y = 0.04; y <= 0.96; y += 0.04) {
-          const f = SW.forecast(st, x, y, t0); if (f.some(o => o.thorn)) continue;
-          let sc = 0; for (const o of f) if (!o.thorn) sc += o.g === 'perfect' ? 3 : o.g === 'good' ? 1 : 0;
-          if (sc >= 3 && (!best || sc > best.sc)) best = { x, y, sc };
-        }
-        return best ? Object.assign(best, Still.toPx(best)) : null;
-      });
-      if (plan && plan.won) { results.push({ i, won: true, t: plan.t.toFixed(1), throws, ...plan.stats }); break; }
-      if (!plan) { await p.waitForTimeout(60); continue; }
-      const flick = throws % 3 === 2; // every third throw is a flick that glides onto the spot
-      if (flick) {
-        const g = (1 - Math.exp(-5 * 0.38)) / 5, vx = 520; // px/s to the right
-        const sx = plan.x - vx * g; await p.mouse.move(sx - 30, plan.y); await p.mouse.down();
-        for (let k = 1; k <= 4; k++) { await p.mouse.move(sx - 30 + k * 7.5, plan.y); }
-        await p.mouse.up();
-      } else {
-        await p.mouse.move(plan.x - 10, plan.y + 8); await p.mouse.down();
-        await p.mouse.move(plan.x - 4, plan.y + 3, { steps: 3 }); await p.mouse.move(plan.x, plan.y, { steps: 3 });
-        if (i === 5 && !shotAim) { await p.waitForTimeout(120); await p.screenshot({ path: path.join(out, '1-aim-preview.png') }); shotAim = true; }
-        await p.waitForTimeout(140); await p.mouse.up();
-      }
-      throws++;
-      if (i === 1 && !shotPerfect) { await p.waitForTimeout(1100); await p.screenshot({ path: path.join(out, '2-ripple-cancel.png') }); shotPerfect = true; }
-      await p.waitForTimeout(120);
+    let n = 0, wrongTried = false, snapTried = false;
+    while (true) {
+      const c = await waitIdle(); if (!c) break;
+      if (i === 0 && n === 0) { await p.waitForTimeout(900); await p.screenshot({ path: path.join(out, '1-guided-ghost-hand.png') }); }
+      if (i === 2 && !snapTried) { snapTried = true; await swipe(c, 'k', { short: true }); await p.waitForTimeout(700); continue; } // too short: must snap back
+      if (i === 2 && !wrongTried && c.a === 'r') { wrongTried = true; await swipe(c, 'k'); await p.waitForTimeout(500); await p.screenshot({ path: path.join(out, '3-wrong-why.png') }); await waitIdle(); continue; }
+      const shot = i === 4 && n === 1 ? path.join(out, '2-swipe-keep-tilt.png') : i === 4 && n === 4 ? path.join(out, '4-split-swipe.png') : null;
+      await swipe(c, c.a, { hold: shot }); n++;
+      await p.waitForTimeout(250);
     }
-    const fps = await p.evaluate(() => window.__fps);
-    if (!results[i]) results.push({ i, won: false });
-    results[i].fps = fps.toFixed(0);
-    await p.waitForTimeout(2700);
-    if (i === 2) {
-      await p.evaluate(() => document.querySelector('#eRef .chip').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
-      await p.waitForTimeout(500); await p.screenshot({ path: path.join(out, '3-end-card.png') });
-    }
+    await p.waitForTimeout(1900);
+    const r = await p.evaluate(() => ({ mode: Still.mode, ...(({ ix, n, first, kept, best, wrongs }) => ({ ix, n, first, kept, best, wrongs }))(Still.st), fps: Math.round(__fps) }));
+    results.push({ i, ...r });
+    if (i === 7) await p.screenshot({ path: path.join(out, '5-end-card.png') });
   }
-  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('stillwater:v1')); s.reviews.forEach(r => r.due = 0); localStorage.setItem('stillwater:v1', JSON.stringify(s)); });
-  await p.reload(); await p.waitForTimeout(1500); await p.screenshot({ path: path.join(out, '4-title-review.png') });
-  console.log(JSON.stringify(results), 'errors:', errs);
+  await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('stillwater:v1')); (s.reviews || []).forEach(r => r.due = 0); localStorage.setItem('stillwater:v1', JSON.stringify(s)); });
+  const pt = await p.evaluate(() => window.__ptypes);
+  await p.reload(); await p.waitForTimeout(1500); await p.screenshot({ path: path.join(out, '6-title-garden.png') });
+  const gardenAfterReload = await p.evaluate(() => Still.garden.length);
+  console.log(JSON.stringify(results, null, 0), '\npointerTypes:', JSON.stringify(pt), 'garden after reload:', gardenAfterReload, '\nerrors:', errs);
   await b.close();
 })();

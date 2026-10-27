@@ -1,196 +1,128 @@
-/* Stillwater — pure pond rules (no DOM). Shared by game.js and tools/solve.js.
-   Coordinates are normalised: x in [0,1] across the pond, y in [0,1] down it; distances are in pond widths.
-   Each spirit pulses with a period (crest = phase 0). You drag a gold stone, then flick or let go: it glides,
-   settles, and sends one ring outward at speed V. Where the ring reaches a spirit at its crest it meets the
-   wave in counter-phase and cancels one knot (a "perfect" inside the tighter window). One ring can calm
-   several spirits in a chain. Thorns are not yours: a ring that reaches one makes it grow and linger.
-   There is no fail state. The pond clears when every spirit is calm and every thorn has drifted away. */
+/* Stillwater — content and rules (no DOM). Shared by game.js and tools/check.js.
+   Thoughts drift down the stream as ink stones. Swipe right to KEEP (yours: you can act on it),
+   left to RELEASE (not yours: let it float downstream), up to SPLIT a stone that is part yours.
+   a: 'k' keep · 'r' release · 's' split (k = the part you keep, r = the part you release). w: the one-line why. */
 (function (root) {
   'use strict';
-  const C = (o) => Object.assign({ control: true, kind: 'serpent', stages: 1, period: 4, phase: 0 }, o);
-  const T = (o) => Object.assign({ control: false, kind: 'thorn', enter: 0, dur: 12, period: 5, phase: 0 }, o);
-  // after: the teaching line is picked from what actually happened in the pond
+  const K = (t, w) => ({ t, a: 'k', w }), R = (t, w) => ({ t, a: 'r', w }), S = (t, k, r, w) => ({ t, a: 's', k, r, w });
   const PONDS = [
-    { name: 'First breath', lens: 'Stoic', win: 0.2,
-      scene: 'Morning. Your breath is quick and shallow. It is the first thing that is yours.',
-      hint: 'Drag the gold stone. Let go when the arc on the spirit glows.',
-      spirits: [C({ label: 'Hurry', concept: 'what is up to us', x: 0.5, y: 0.42, period: 4.4 })],
-      after: { clean: 'You could not stop the wave. You could only meet it. That is all control ever was: your response, placed well.' },
-      cite: 'Epictetus, Enchiridion 1',
-      plan: ['I feel rushed', 'I will take one slow breath before I answer'],
-      reflect: ['Before my first meeting', 'When a message makes me hurry', 'Before I reply to anyone today'] },
-    { name: 'The kettle', lens: 'Stoic', win: 0.18,
-      scene: 'A deadline hisses on the stove. Two things are yours: your next step, and your pace.',
-      hint: 'One ring can still two spirits if it reaches both at their crests.',
-      spirits: [C({ label: 'Dread', concept: 'one next step', x: 0.3, y: 0.36, period: 4.0, phase: 0.3 }),
-        C({ label: 'Rushing', concept: 'festina lente', kind: 'mask', x: 0.68, y: 0.62, stages: 2, period: 4.6, phase: 0.7 })],
-      after: { chain: 'One well-placed ring calmed two spirits. Slow is smooth: a single right next step settles more than speed does.',
-        clean: 'Each knot came undone with one unhurried ring. Make haste slowly: pace is a choice you place, not a feeling you obey.' },
-      cite: 'Augustus, via Suetonius: festina lente',
-      plan: ['the deadline feels loud', 'I will write the single next step and do only that'],
-      reflect: ['Write my next step on paper', 'Set one 25-minute block', 'Say no to one extra task'] },
-    { name: 'Criticism', lens: 'Stoic', win: 0.17,
-      scene: 'A sharp review arrives. Its tone drifts across the water. Your reply is yours.',
-      hint: 'The silver thorn is not yours. If your ring reaches it, it grows. Drop the stone away from it.',
-      spirits: [C({ label: 'Criticism', concept: 'dichotomy of control', kind: 'mask', x: 0.5, y: 0.72, stages: 2, period: 4.2, phase: 0.5 }),
-        T({ label: 'their tone', x: 0.12, y: 0.2, x1: 0.88, y1: 0.26, enter: 0, dur: 12 })],
-      after: { thorn: 'Your ring touched their tone and it only grew. You can answer the words. The tone was never yours to fix.',
-        clean: 'You answered the criticism and left their tone alone, and it drifted out by itself. Take the useful part. Let the rest pass.' },
-      cite: 'Epictetus, Enchiridion 5',
-      plan: ['someone criticises me sharply', 'I will find the one useful sentence and answer only that'],
-      reflect: ['Feedback at work', 'A comment from family', 'Something online'] },
-    { name: 'The second arrow', lens: 'Buddhist', win: 0.16,
-      scene: 'A setback stings. The sting is the first arrow. The story you tell about it is the second.',
-      hint: 'Leave the sting. Calm the story, knot by knot.',
-      spirits: [T({ label: 'the sting', concept: 'first arrow', x: 0.4, y: 0.18, x1: 0.62, y1: 0.24, enter: 0, dur: 14 }),
-        C({ label: 'Rumination', concept: 'the second arrow', x: 0.5, y: 0.72, stages: 3, period: 3.8, phase: 0.2 })],
-      after: { thorn: 'Pushing at the sting made it last longer. Pain arrives on its own; only the story needs your hand.',
-        clean: 'The sting faded by itself while you unwound the story. The first arrow hurts. The second one is optional.' },
-      cite: 'Sallatha Sutta, SN 36.6',
-      plan: ['a setback stings', 'I will name the sting once, then drop the story'],
-      reflect: ['A mistake I keep replaying', 'A loss I keep explaining', 'A slight I keep rehearsing'] },
-    { name: 'Craving', lens: 'Buddhist', win: 0.16,
-      scene: 'A lovely evening is ending. Wanting it to stay drifts by. Attention and thanks are yours.',
-      hint: 'Grasping is a thorn too, even when it is pale and beautiful. Let it drift.',
-      spirits: [T({ kind: 'lotus', label: 'wanting more', concept: 'grasping', x: 0.12, y: 0.48, x1: 0.88, y1: 0.44, enter: 0, dur: 15 }),
-        C({ label: 'Craving', concept: 'non-grasping', x: 0.27, y: 0.8, period: 4.0, phase: 0.1 }),
-        C({ label: 'Savoring', concept: 'gratitude', kind: 'mask', x: 0.73, y: 0.16, stages: 2, period: 4.4, phase: 0.6 })],
-      after: { thorn: 'Reaching for the lotus only made it linger and cloud the pond. What you clutch, you stop seeing.',
-        chain: 'One ring calmed craving and opened savoring. Letting go and appreciating turn out to be the same movement.',
-        clean: 'You let the lotus pass and the evening stayed beautiful. Hold good things the way water holds the moon.' },
-      cite: 'Dhammapada 277, paraphrased',
-      plan: ['a good moment is ending', 'I will name one thing I am grateful for instead of chasing more'],
-      reflect: ['Scrolling one more time', 'Wanting a trip to never end', 'Reaching for another snack'] },
-    { name: 'Sunk cost', lens: 'Strategy', win: 0.15,
-      scene: 'A project has eaten a year. A rival moves. What you already spent drifts by. The next decision is yours.',
-      hint: 'Past spending is a thorn. Decide only from where you stand now.',
-      spirits: [T({ label: 'what we already spent', concept: 'sunk cost', x: 0.1, y: 0.18, x1: 0.9, y1: 0.28, enter: 0, dur: 13 }),
-        T({ label: "a rival's move", x: 0.9, y: 0.9, x1: 0.14, y1: 0.86, enter: 5, dur: 12 }),
-        C({ label: 'Sunk cost', concept: 'decide forward', kind: 'mask', x: 0.3, y: 0.56, stages: 2, period: 4.0, phase: 0.4 }),
-        C({ label: 'Pride in the plan', concept: 'ego is the enemy', x: 0.72, y: 0.62, stages: 2, period: 3.6, phase: 0.85 })],
-      after: { thorn: 'Touching what was already spent made it bigger. Money gone is gone; it can only distort the next choice.',
-        chain: 'A single ring stilled sunk cost and pride together. They are one knot: not wanting to have been wrong.',
-        clean: 'You decided from where you stand, and the past cost drifted off the water. Only future costs and benefits belong in the choice.' },
-      cite: 'Arkes & Blumer, 1985',
-      plan: ['I want to continue because of what I have spent', 'I will ask: knowing what I know now, would I start this today?'],
-      reflect: ['A project at work', 'A subscription or purchase', 'A habit I keep for history'] },
-    { name: 'The reorg', lens: 'Stoic', win: 0.14,
-      scene: 'The org chart is redrawn overnight. Three things drift past you. Two are yours.',
-      hint: 'Thorns come in waves. Wait for a clear stretch of water, then drop the stone.',
-      spirits: [T({ label: 'the new chart', x: 0.08, y: 0.3, x1: 0.92, y1: 0.36, enter: 0, dur: 11 }),
-        T({ label: 'what they think', x: 0.92, y: 0.1, x1: 0.1, y1: 0.16, enter: 4, dur: 12 }),
-        T({ label: 'the rumour mill', x: 0.1, y: 0.92, x1: 0.9, y1: 0.88, enter: 8, dur: 11 }),
-        C({ label: 'Uncertainty', concept: 'the present task', x: 0.3, y: 0.62, stages: 2, period: 3.4, phase: 0.2 }),
-        C({ label: 'Assuming', concept: 'ask, then act', kind: 'mask', x: 0.72, y: 0.58, stages: 2, period: 3.8, phase: 0.65 })],
-      after: { thorn: 'Every thorn you touched stayed longer. Rumours feed on attention; the work in front of you starves them.',
-        chain: 'One ring reached uncertainty and assumption at once. A single honest question settles both.',
-        clean: 'You waited for clear water and the reorg drifted past you. Confine yourself to the present.' },
-      cite: 'Marcus Aurelius, Meditations 7.29',
-      plan: ['things change above me', 'I will ask my manager one honest question about what matters now'],
-      reflect: ['A change at work', 'A change at home', 'News I cannot control'] },
-    { name: 'Still water', lens: 'All', win: 0.13,
-      scene: 'Everything at once. Hurry, story, the next move. Two thorns. The pond asks only that you sort clearly.',
-      hint: 'Sort first: which of these are yours? Then still them, one ring at a time.',
-      spirits: [C({ label: 'Hurry', concept: 'the breath', x: 0.22, y: 0.42, period: 4.4, phase: 0.0 }),
-        C({ label: 'The story', concept: 'second arrow', kind: 'mask', x: 0.78, y: 0.42, stages: 2, period: 3.6, phase: 0.5 }),
-        C({ label: 'Next move', concept: 'decide forward', x: 0.5, y: 0.76, stages: 2, period: 3.9, phase: 0.25 }),
-        T({ label: 'the weather', x: 0.08, y: 0.16, x1: 0.92, y1: 0.18, enter: 0, dur: 13 }),
-        T({ kind: 'lotus', label: 'praise', x: 0.92, y: 0.6, x1: 0.08, y1: 0.58, enter: 6, dur: 13 })],
-      after: { thorn: 'Even praise grew when you reached for it. Muddy water clears when you stop stirring it.',
-        chain: 'Your rings found several spirits at once. Clarity compounds: sort once, and many things settle.',
-        clean: 'You sorted the pond, calmed what was yours and let the rest pass. Muddy water, let stand, becomes clear.' },
-      cite: 'Tao Te Ching 15',
+    { name: 'First stream', lens: 'Stoic', drift: 1.7,
+      scene: 'Thoughts drift down the stream. Some are yours to carry. Some are only passing through.',
+      stones: [R('The weather', 'Rain keeps its own schedule. Your coat is yours. The sky is not.'),
+        K('My reply', 'Every word you send is yours to choose.'),
+        K('My effort today', 'Effort is one thing no one can give you or take from you.')],
+      lesson: 'Some things are up to us and some are not. Sorting them is the first freedom.', cite: 'Epictetus, Enchiridion 1',
+      plan: ['I start fuming about something I can\'t change', 'I will name one thing I can do in the next ten minutes'],
+      reflect: ['My commute', 'A family plan', 'My workday'] },
+    { name: 'The fork', lens: 'Stoic', drift: 1.6,
+      scene: 'An ordinary morning. Sort it as it comes.',
+      stones: [R('Traffic on the way in', 'The traffic was there before you. Your patience is what you bring to it.'),
+        K('When I leave the house', 'Leaving ten minutes earlier is entirely yours.'),
+        R('Getting older', 'Age arrives on its own. How you spend this year is yours.'),
+        K('How I treat the waiter', 'Courtesy is completely your choice.'),
+        R('What already happened', 'It is done. Only what you do with it now is yours.'),
+        K('My next sentence', 'Nothing is more yours than the next thing you say.'),
+        R('Other people\'s moods', 'You can be kind beside a mood, but you can\'t set it.'),
+        K('Keeping my promise', 'Keeping your word is a choice you make again each day.'),
+        R('Whether the train is late', 'Timetables belong to the railway. Your book for the wait is yours.')],
+      lesson: 'Freedom isn\'t getting the world to agree. It\'s putting your whole weight on what is yours.', cite: 'Epictetus, Discourses 1.1',
+      plan: ['something outside my control annoys me', 'I will say "not mine" and turn to my next action'],
+      reflect: ['My commute', 'Errands and queues', 'Getting the kids out the door'] },
+    { name: 'Their reaction', lens: 'Communication', drift: 1.5,
+      scene: 'A tense week of messages. Your words are in the stream with everyone else\'s.',
+      stones: [R('He ignored my email', 'You can follow up, but his silence is his.'),
+        K('One clear follow-up', 'Writing one kind, clear follow-up is entirely yours.'),
+        R('How she hears my tone', 'You choose the words. How they land passes through her day, not yours.'),
+        K('Choosing my words', 'Word choice is yours, every single time.'),
+        S('Being understood', 'Explaining it clearly', 'What they take away', 'Clarity is your half. What they make of it lives in their head.'),
+        R('Whether they agree', 'You can make the best case. Agreement is theirs to give.'),
+        K('Listening before I answer', 'Attention is something you can give right now.'),
+        K('Apologising for my part', 'Owning your part is always available to you.'),
+        R('Whether they forgive me', 'You can apologise well. Forgiveness belongs to them.')],
+      lesson: 'Your words are yours. Their reaction is theirs. Say it well, then let it land where it lands.', cite: 'after Epictetus, Enchiridion 5',
+      plan: ['someone reacts badly to what I said', 'I will check that I was clear and kind, and leave the rest'],
+      reflect: ['A tense email thread', 'A talk at home', 'A meeting where I present'] },
+    { name: 'Clinging', lens: 'Buddhist', drift: 1.45,
+      scene: 'A lovely evening, and the wish that it would never end. Even beautiful stones can be clung to.',
+      stones: [R('How long this evening lasts', 'Good moments end on their own. Gripping them spoils them.'),
+        K('Savouring this moment', 'Attention to right now is yours.'),
+        R('Being liked by everyone', 'No one controls being liked by everyone. Let it float.'),
+        K('Being kind anyway', 'Kindness doesn\'t need anyone\'s approval to be yours.'),
+        R('The way things used to be', 'The past is a stone that has already sunk.'),
+        S('My relationship', 'How I show up', 'How they feel', 'You bring your half: presence and care. Their heart is theirs.'),
+        K('Noticing my breath', 'Your breath is the oldest thing that is yours.'),
+        R('Needing it to go my way', 'Outcomes depend on many hands. The needing is the part that hurts.'),
+        K('Putting down a grudge', 'Only you can set a grudge down. That practice is yours.')],
+      lesson: 'Craving wants the river to stop. Peace lets it flow while you tend what is yours.', cite: 'after the Dhammapada, 277',
+      plan: ['I catch myself gripping a good moment', 'I will name one thing I\'m grateful for in it'],
+      reflect: ['Scrolling for one more hit', 'A trip or evening ending', 'Wanting someone\'s approval'] },
+    { name: 'The boardroom', lens: 'Strategy', drift: 1.35,
+      scene: 'Quarterly planning. Everything feels urgent. Only some of it is in your hands.',
+      stones: [R('Interest rates', 'Rates move with the economy. Your plan for them is yours.'),
+        K('Our pricing', 'You set your own prices.'),
+        R('A competitor\'s launch', 'Their roadmap is theirs. Your response is yours.'),
+        K('Our product quality', 'Quality is built by your team\'s daily choices.'),
+        S('Hitting the quarter', 'Pipeline and effort', 'The final number', 'You drive the inputs. The result also depends on buyers and timing.'),
+        K('Which customer to call first', 'Prioritising is fully yours.'),
+        R('The market\'s mood today', 'Markets swing on millions of moods. Don\'t trade your plan for one day.'),
+        R('Whether the investor says yes', 'You control the pitch, not the decision.'),
+        K('How fast we answer support', 'Response time is a choice of staffing and priority.')],
+      lesson: 'Strategy is mostly choosing what not to worry about. Pour effort where your hands can reach.', cite: 'after Covey: the circle of influence',
+      plan: ['a meeting fills up with things we can\'t change', 'I will ask, "what is our next move on what we control?"'],
+      reflect: ['Our next planning meeting', 'A competitor\'s news', 'My own monthly goals'] },
+    { name: 'Sunk cost', lens: 'Strategy', drift: 1.25,
+      scene: 'A project has eaten a year. What was spent is downstream already. What comes next is not.',
+      stones: [R('The year already spent', 'That time is gone whatever you choose next.'),
+        K('Whether to continue from here', 'The forward decision is yours.'),
+        R('Money already paid', 'Spent money can\'t be unspent. Only future money is still in play.'),
+        K('What I\'d choose fresh today', 'That is the right question, and it is yours.'),
+        S('Our struggling project', 'What we do next', 'What we already put in', 'The past investment is spent. The next step is still yours.'),
+        R('The ticket I already bought', 'It is spent whether you go or not. Go only if tonight is still worth it.'),
+        K('Cancelling the subscription', 'One tap, entirely yours.'),
+        R('Looking foolish for quitting', 'What others make of your U-turn is theirs. Saving face can cost more than changing.'),
+        K('Asking for an honest review', 'Inviting a fresh pair of eyes is yours to do.')],
+      lesson: 'Past costs are already downstream. Decide only from where you stand.', cite: 'Arkes & Blumer, 1985',
+      plan: ['I want to continue because of what I\'ve spent', 'I will ask: knowing what I know now, would I start this today?'],
+      reflect: ['A project at work', 'A purchase or subscription', 'A habit I keep for history'] },
+    { name: 'Signal and noise', lens: 'Strategy', drift: 1.15,
+      scene: 'The feeds are loud tonight. Keep what you can act on. Let the noise float past.',
+      stones: [R('A rumour about layoffs', 'Unconfirmed talk isn\'t yours to act on. Wait for facts.'),
+        K('What customers asked for', 'Customer requests are signal you can act on.'),
+        R('Today\'s stock price', 'Daily swings are mostly noise you can\'t move.'),
+        K('Our churn numbers', 'Churn is signal. It points at things you can fix.'),
+        R('An angry stranger\'s comment', 'One stranger\'s anger is noise, not a mandate.'),
+        S('A harsh online review', 'The fixable point in it', 'The tone it was written in', 'Take the fixable point. The tone was theirs.'),
+        K('My manager\'s feedback', 'Direct feedback from someone close to the work is signal worth acting on.'),
+        R('A viral hot take', 'Hot takes are built to spread, not to guide you.'),
+        K('How I slept this week', 'Your sleep is a signal about you, and you can act on it.')],
+      lesson: 'Attention is your scarcest budget. Spend it only on what you can act on.', cite: 'after Nate Silver, The Signal and the Noise',
+      plan: ['a headline spikes my worry', 'I will ask "can I act on this today?" before reading more'],
+      reflect: ['Checking the news', 'Team chat', 'Metrics and dashboards'] },
+    { name: 'Still water', lens: 'All', drift: 1.05,
+      scene: 'Everything at once, the way real days come. Sort it calmly. Nothing here is a test you can fail.',
+      stones: [R('Whether the flight is delayed', 'The airline and the weather decide that.'),
+        K('Packing a book for the wait', 'Preparing for the wait is entirely yours.'),
+        S('My boss\'s opinion of me', 'My work', 'What she concludes', 'You shape it with your work. Her conclusions are still hers.'),
+        K('How I spend my evening', 'Your evening is yours to spend.'),
+        R('What happened at school', 'That chapter is already written.'),
+        R('Praise from strangers', 'Praise is pleasant weather. Let it pass too.'),
+        S('My health', 'Sleep, food, movement', 'Genes and luck', 'You steer the habits. Some of it is luck.'),
+        K('Asking for help', 'Asking is always in your hands.'),
+        R('Who wins the election', 'Your vote is yours. The total is millions of other choices.')],
+      lesson: 'Muddy water, let stand, becomes clear. Keep what is yours and let the rest flow.', cite: 'Tao Te Ching 15',
       plan: ['everything happens at once', 'I will sort it into mine and not mine before I act'],
       reflect: ['A busy Monday', 'A hard conversation', 'A big decision'] },
   ];
-  const V = 0.42, RMAX = 0.62, RTHORN = 0.27, GLIDE_T = 0.38, GLIDE_K = 5, VMAX = 0.7, MAX_STAGE = 4;
-  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
-  function make(i, aspect) {
-    const P = PONDS[i];
-    return { i, P, aspect: aspect || 1.62, t: 0, won: false, ev: [], rings: [], stats: { releases: 0, perfect: 0, good: 0, near: 0, thorn: 0, chainMax: 0 },
-      sp: P.spirits.map((s, k) => Object.assign({}, s, { k, stage: s.stages || 1, amp: 1, gone: false, extra: 0 })) };
+  const judge = (stone, dir) => stone.a === dir;
+  function validate() {
+    const errs = []; let n = 0;
+    PONDS.forEach((P, i) => P.stones.forEach((s, j) => {
+      n++; if (!s.t || !s.w || !'krs'.includes(s.a)) errs.push(`${i}.${j} incomplete`);
+      if (s.a === 's' && (!s.k || !s.r)) errs.push(`${i}.${j} split parts missing`);
+      if (s.t.length > 34) errs.push(`${i}.${j} text too long: ${s.t}`);
+    }));
+    return { n, errs };
   }
-  const phaseOf = (s, t) => (((t / s.period + s.phase) % 1) + 1) % 1;
-  const crestDist = (s, t) => { const p = phaseOf(s, t); return Math.min(p, 1 - p); };
-  function pos(s, t) {
-    if (s.control) return { x: s.x, y: s.y + Math.sin(t * 0.5 + s.k) * 0.004 };
-    const u = clamp((t - s.enter) / (s.dur + s.extra), 0, 1), e = u * u * (3 - 2 * u) * 0.3 + u * 0.7;
-    return { x: s.x + (s.x1 - s.x) * e, y: s.y + (s.y1 - s.y) * e + Math.sin(u * 6.28) * 0.02 };
-  }
-  const active = (s, t) => s.control ? (!s.gone && s.stage > 0) : (t >= s.enter && t < s.enter + s.dur + s.extra);
-  const passed = (s, t) => !s.control && t >= s.enter + s.dur + s.extra;
-  const unrest = st => { let c = 0; for (const s of st.sp) if (active(s, st.t)) c += s.control ? s.stage : s.amp; return c; };
-  const dist = (st, a, b) => Math.hypot(a.x - b.x, (a.y - b.y) * st.aspect);
-  // where a released stone comes to rest (flick momentum with exponential friction)
-  function settle(x, y, vx, vy) {
-    const m = Math.hypot(vx, vy); if (m > VMAX) { vx *= VMAX / m; vy *= VMAX / m; }
-    const g = (1 - Math.exp(-GLIDE_K * GLIDE_T)) / GLIDE_K;
-    return { x: clamp(x + vx * g, 0.02, 0.98), y: clamp(y + vy * g, 0.02, 0.98) };
-  }
-  function grade(P, off) { return off <= P.win * 0.22 ? 'perfect' : off <= P.win * 0.5 ? 'good' : off <= P.win * 1.15 ? 'near' : 'none'; }
-  // what a ring born at (x,y) at time t0 would do: per-spirit grade and which thorns it would touch
-  function forecast(st, x, y, t0) {
-    const o = { x, y }, out = [];
-    for (const s of st.sp) {
-      if (s.control) {
-        if (!active(s, st.t)) continue;
-        const d = dist(st, o, pos(s, t0)); if (d > RMAX) continue;
-        const ta = t0 + d / V, off = crestDist(s, ta);
-        out.push({ k: s.k, d, off, g: grade(st.P, off), ta });
-      } else {
-        for (let R = 0; R <= RTHORN; R += 0.01) {
-          const ta = t0 + R / V; if (!active(s, ta) && !(ta < s.enter)) break; if (ta < s.enter) continue;
-          if (dist(st, o, pos(s, ta)) <= R) { out.push({ k: s.k, thorn: true, d: R, ta }); break; }
-        }
-      }
-    }
-    return out;
-  }
-  // release a stone at (x,y) with flick velocity (pond widths / s). Returns the ring, or null if one is still gliding.
-  function release(st, x, y, vx, vy) {
-    if (st.won || st.rings.some(r => r.t0 > st.t)) return null;
-    const p = settle(x, y, vx || 0, vy || 0), r = { x: p.x, y: p.y, t0: st.t + GLIDE_T, sx: x, sy: y, hit: {}, good: 0, id: st.stats.releases };
-    st.rings.push(r); st.stats.releases++; st.ev.push({ type: 'throw', r });
-    return r;
-  }
-  function step(st, dt) {
-    if (st.won) return;
-    const t1 = st.t + dt;
-    for (let i = st.rings.length - 1; i >= 0; i--) {
-      const r = st.rings[i]; if (t1 < r.t0) continue;
-      if (!r.landed) { r.landed = true; st.ev.push({ type: 'land', r }); }
-      const R = (t1 - r.t0) * V;
-      for (const s of st.sp) {
-        if (r.hit[s.k] || !active(s, t1)) continue;
-        if (s.control) {
-          const d = dist(st, r, pos(s, t1)); if (d > RMAX || d > R) continue;
-          r.hit[s.k] = 1; const off = crestDist(s, r.t0 + d / V), g = grade(st.P, off);
-          if (g === 'perfect' || g === 'good') {
-            s.stage--; r.good++; st.stats[g]++;
-            if (r.good > st.stats.chainMax) st.stats.chainMax = r.good;
-            if (s.stage <= 0) s.gone = true;
-            st.ev.push({ type: g, k: s.k, r, still: s.gone, chain: r.good });
-          } else if (g === 'near') { st.stats.near++; st.ev.push({ type: 'near', k: s.k, r }); }
-          else st.ev.push({ type: 'miss', k: s.k, r });
-        } else if (R <= RTHORN) {
-          const d = dist(st, r, pos(s, t1)); if (d > R) continue;
-          r.hit[s.k] = 1; s.amp = Math.min(MAX_STAGE, s.amp * 2); s.extra += 3; st.stats.thorn++;
-          st.ev.push({ type: 'grow', k: s.k, r });
-        }
-      }
-      if (R > RMAX) st.rings.splice(i, 1);
-    }
-    st.t = t1;
-    for (const s of st.sp) if (!s.control && !s.passedEv && passed(s, st.t)) { s.passedEv = true; st.ev.push({ type: 'pass', k: s.k }); }
-    if (st.sp.every(s => s.control ? s.gone : passed(s, st.t)) && !st.rings.some(r => r.t0 > st.t)) { st.won = true; st.ev.push({ type: 'won' }); }
-  }
-  // the teaching line tied to what just happened
-  function lesson(st) {
-    const a = st.P.after, s = st.stats;
-    if (s.thorn > 0 && a.thorn) return a.thorn;
-    if (s.chainMax >= 2 && a.chain) return a.chain;
-    return a.clean;
-  }
-  const api = { PONDS, make, step, release, settle, forecast, grade, lesson, pos, active, passed, phaseOf, crestDist, unrest, dist, V, RMAX, RTHORN, GLIDE_T, GLIDE_K, VMAX };
+  const api = { PONDS, judge, validate };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SW = api;
 })(this);

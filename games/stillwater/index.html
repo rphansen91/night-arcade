@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0b1426">
 <meta name="color-scheme" content="dark">
-<meta name="description" content="Calm restless spirits on a moonlit pond. Flick a gold ripple to meet each wave in counter-phase, and let the thorns that are not yours drift past.">
+<meta name="description" content="Thoughts drift down a moonlit stream. Swipe right to keep what is yours, left to let the rest float away, and let the thorns that are not yours drift past.">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Stillwater">
 <meta name="format-detection" content="telephone=no">
 <meta property="og:title" content="Stillwater · Night Arcade">
-<meta property="og:description" content="Breathe restless spirits still on a moonlit pond. Calm what is yours, and let the rest pass.">
+<meta property="og:description" content="Sort the stream: keep what is yours, let the rest float away, and grow a lantern garden.">
 <meta property="og:image" content="https://rphansen91.github.io/night-arcade/games/stillwater/screenshots/cover.png">
 <title>Stillwater</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -72,6 +72,10 @@ h2{font-weight:400;font-size:28px;margin:0 0 6px;letter-spacing:.06em}
 .review{display:none;margin:26px 0 0}
 .review.on{display:block}
 #end{justify-content:flex-start;padding-top:calc(48px + env(safe-area-inset-top,0px))}
+.score{font-size:13px;color:var(--teal);letter-spacing:.06em;margin:-12px 0 20px;font-style:italic}
+.gcount{margin-top:18px;color:var(--gold);font-size:13px;letter-spacing:.12em;font-style:italic;opacity:.85}
+#title{justify-content:flex-start;padding-top:calc(90px + env(safe-area-inset-top,0px))}
+#toast{font-size:17px;bottom:calc(168px + env(safe-area-inset-bottom,0px))}
 .story{font-size:19px;line-height:1.6;max-width:330px;margin:0 0 24px;color:#e6fff8;text-shadow:0 0 14px rgba(79,227,193,.35)}
 </style>
 </head>
@@ -82,9 +86,10 @@ h2{font-weight:400;font-size:28px;margin:0 0 6px;letter-spacing:.06em}
 <div id="toast"></div>
 <div class="ov on" id="title">
   <h1>STILLWATER</h1>
-  <p class="sub">a pond for a restless mind</p>
+  <p class="sub">sort the stream · tend your garden</p>
   <div class="btn" id="bBegin" role="button">Begin</div>
   <div class="ponds" id="ponds"></div>
+  <div class="gcount" id="gCount"></div>
   <div class="card review" id="review"><b>A moment of review</b><span id="rvText"></span>
     <div class="rvb"><div class="chip" id="rvYes" role="button">It came up, I used it</div><div class="chip" id="rvNo" role="button">Not yet</div></div></div>
 </div>
@@ -95,15 +100,10 @@ h2{font-weight:400;font-size:28px;margin:0 0 6px;letter-spacing:.06em}
 </div>
 <div class="ov" id="end">
   <div class="num">STILL</div>
-  <p class="quote" id="eQuote"></p><div class="cite" id="eCite"></div>
+  <p class="quote" id="eQuote"></p><div class="cite" id="eCite"></div><div class="score" id="eScore"></div>
   <div class="card"><b>If · then</b><span id="ePlan"></span></div>
   <div class="refl"><b>Where will you use it first?</b><div class="chips" id="eRef"></div><div class="rnote" id="eRefNote"></div></div>
-  <div><div class="btn q" id="bKeep" role="button">Keep this plan</div><div class="btn q" id="bRest" role="button">Sit a moment</div><div class="btn" id="bNext" role="button">Next pond</div></div>
-</div>
-<div class="ov" id="lost">
-  <h2>The pond overflowed</h2>
-  <p class="hint" id="lHint">Nothing is lost. Breathe, and try again.</p>
-  <div class="btn" id="bRetry" role="button">Try again</div>
+  <div><div class="btn q" id="bKeep" role="button">Keep this plan</div><div class="btn" id="bNext" role="button">Next pond</div></div>
 </div>
 <div class="ov clear" id="story">
   <p class="story" id="sText"></p>

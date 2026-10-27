@@ -1,6 +1,6 @@
 /* Stillwater — offline cache. Bump VERSION on ship.
    Network-first for the page, code and data (always fresh when online, cached copy offline); cache-first for images. */
-const VERSION = 'stillwater-v2';
+const VERSION = 'stillwater-v3';
 const SHELL = [
   './',
   './index.html',
